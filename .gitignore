@@ -160,5 +160,4 @@ cython_debug/
 #.idea/
 
 # Custom extensions to avoid pushing data upstream.
-data/genres_original/*/*.wav
-data/images_original/*/*.png
+data/*
