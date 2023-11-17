@@ -1,0 +1,54 @@
+version: '3.8'
+services:
+  frontend:
+    build: ./frontend
+    ports:
+      - 3000:3000
+    networks:
+      moodSickNetwork-10.9.0.0:
+        ipv4_address: 10.9.0.5
+
+  middleware:
+    build: ./middleware
+    ports:
+      - 8080:8080
+    networks:
+      moodSickNetwork-10.9.0.0:
+        ipv4_address: 10.9.0.6
+
+  ml:
+    build: ./ml
+    ports:
+      - 5000:5000
+    networks:
+     moodSickNetwork-10.9.0.0:
+        ipv4_address: 10.9.0.7
+  
+  ml_training:
+    build: ./ml_training
+    ports:
+      - 5008:5008
+    networks:
+      moodSickNetwork-10.9.0.0:
+        ipv4_address: 10.9.0.8
+  
+  
+
+
+  # db:
+  #   image: postgres:latest
+  #   ports:
+  #     - 5432:5432
+  #   networks:
+  #     - moodSickNetwork
+  #   environment:
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: postgres
+  #     POSTGRES_DB: moodSickDB
+
+networks:
+  moodSickNetwork-10.9.0.0:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.9.0.0/24
