@@ -1,0 +1,54 @@
+version: '3.8'
+services:
+  frontend:
+    build: ./frontend
+    ports:
+      - 3000:3000
+    networks:
+      moodSickNetwork-10.9.0.0:
+        ipv4_address: 10.9.0.5
+
+  middleware:
+    build: ./middleware
+    ports:
+      - 8080:8080
+    volumes:
+      - ./middleware:/app
+    networks:
+      moodSickNetwork-10.9.0.0:
+        ipv4_address: 10.9.0.6
+
+  ml:
+    build: ./ml
+    ports:
+      - 5000:5000
+    networks:
+     moodSickNetwork-10.9.0.0:
+        ipv4_address: 10.9.0.7
+  
+  ml_training:
+    build: ./ml_training
+    ports:
+      - 5008:5008
+    networks:
+      moodSickNetwork-10.9.0.0:
+        ipv4_address: 10.9.0.8
+  
+  mongodb:
+    image: mongo:latest
+    ports:
+      - 27017:27017
+    networks:
+      moodSickNetwork-10.9.0.0:
+          ipv4_address: 10.9.0.9
+    environment:
+      POSTGRES_USER: mongo
+      POSTGRES_PASSWORD: mongo
+      POSTGRES_DB: moodSickDB
+
+networks:
+  moodSickNetwork-10.9.0.0:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.9.0.0/24
