@@ -12,6 +12,8 @@ services:
     build: ./middleware
     ports:
       - 8080:8080
+    volumes:
+      - ./middleware:/app
     networks:
       moodSickNetwork-10.9.0.0:
         ipv4_address: 10.9.0.6
@@ -32,19 +34,17 @@ services:
       moodSickNetwork-10.9.0.0:
         ipv4_address: 10.9.0.8
   
-  
-
-
-  # db:
-  #   image: postgres:latest
-  #   ports:
-  #     - 5432:5432
-  #   networks:
-  #     - moodSickNetwork
-  #   environment:
-  #     POSTGRES_USER: postgres
-  #     POSTGRES_PASSWORD: postgres
-  #     POSTGRES_DB: moodSickDB
+  mongodb:
+    image: mongo:latest
+    ports:
+      - 27017:27017
+    networks:
+      moodSickNetwork-10.9.0.0:
+          ipv4_address: 10.9.0.9
+    environment:
+      POSTGRES_USER: mongo
+      POSTGRES_PASSWORD: mongo
+      POSTGRES_DB: moodSickDB
 
 networks:
   moodSickNetwork-10.9.0.0:
