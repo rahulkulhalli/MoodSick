@@ -1,30 +1,39 @@
 version: '3.8'
 services:
-#   frontend:
-#     build: ./frontend
-#     ports:
-#       - 3000:3000
-#     networks:
-#       moodSickNetwork-10.9.0.0:
-#         ipv4_address: 10.9.0.5
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    tty: true
+    ports:
+      - 3000:3000
+    networks:
+      moodSickNetwork-10.9.0.0:
+        ipv4_address: 10.9.0.5
 
-#   middleware:
-#     build: ./middleware
-#     ports:
-#       - 8080:8080
-#     volumes:
-#       - ./middleware:/app
-#     networks:
-#       moodSickNetwork-10.9.0.0:
-#         ipv4_address: 10.9.0.6
+  middleware:
+    build:
+      context: ./middleware
+      dockerfile: Dockerfile
+    tty: true
+    ports:
+      - 8080:8080
+    # volumes:
+    #   - ./middleware:/app
+    networks:
+      moodSickNetwork-10.9.0.0:
+        ipv4_address: 10.9.0.6
 
-#   ml:
-#     build: ./ml
-#     ports:
-#       - 5000:5000
-#     networks:
-#      moodSickNetwork-10.9.0.0:
-#         ipv4_address: 10.9.0.7
+  ml:
+    build:
+      context: ./ml
+      dockerfile: Dockerfile
+    tty: true
+    ports:
+      - 5000:5000
+    networks:
+     moodSickNetwork-10.9.0.0:
+        ipv4_address: 10.9.0.7
   
   ml_training:
     build:
@@ -33,22 +42,23 @@ services:
     image: ml_training
     tty: true
   
-  # mongodb:
-  #   image: mongo:latest
-  #   ports:
-  #     - 27017:27017
-  #   networks:
-  #     moodSickNetwork-10.9.0.0:
-  #         ipv4_address: 10.9.0.9
-  #   environment:
-  #     POSTGRES_USER: mongo
-  #     POSTGRES_PASSWORD: mongo
-  #     POSTGRES_DB: moodSickDB
+  mongodb:
+    platform: linux/arm64/v8
+    image: mongo:7.0.4-rc0
+    ports:
+      - "27017:27017"
+    tty: true
+    networks:
+      moodSickNetwork-10.9.0.0:
+        ipv4_address: 10.9.0.9
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mongo
+      MONGO_INITDB_ROOT_PASSWORD: mongo
+      MONGO_INITDB_DATABASE: moodSickDB
 
 networks:
   moodSickNetwork-10.9.0.0:
     driver: bridge
-    tty: true
     ipam:
       config:
         - subnet: 10.9.0.0/24
