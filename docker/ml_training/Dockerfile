@@ -20,12 +20,5 @@ COPY requirements.txt .
 # Install requirements for ml_training
 RUN pip3 install --no-cache-dir -r requirements.txt
 
-
-# Set the working directory
-WORKDIR /app
-
-# Optional: copy your application files
-COPY . /app
-
 # Set the default command for the container
 CMD ["/bin/bash"]
