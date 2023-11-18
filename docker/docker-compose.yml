@@ -1,0 +1,8 @@
+version: '3.8'
+services:
+  ml_training:
+    build:
+      context: ./ml_training
+      dockerfile: Dockerfile
+    image: ml_training
+    tty: true
