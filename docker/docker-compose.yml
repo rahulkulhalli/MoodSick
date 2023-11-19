@@ -8,4 +8,4 @@ services:
     image: ml_training
     tty: true
     volumes:
-      - ./ml_training/src:/ml_training/src
+      - ./ml_training:/ml_training
