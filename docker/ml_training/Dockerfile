@@ -1,17 +1,24 @@
-# Use the official PyTorch base image
-FROM pytorch/pytorch:latest
+# Use Ubuntu 20.04 LTS as the base image
+FROM ubuntu:20.04
 
-WORKDIR /app
+# Avoid prompts from apt
+ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install
-# Copy the requirements.txt file to the container
+# Update and install dependencies
+RUN apt-get update && apt-get install -y \
+    python3-pip \
+    python3-dev \
+    build-essential \
+    nano \
+    vim 
+
+# Upgrade pip
+RUN pip3 install --upgrade pip
+
 COPY requirements.txt .
 
-# Install the dependencies
+# Install requirements for ml_training
 RUN pip3 install --no-cache-dir -r requirements.txt
 
-# Copy the content of the local src directory to the working directory
-COPY ./src .
-
-# Specify the command to run on container start
-CMD ["python", "train.py"]
+# Set the default command for the container
+CMD ["/bin/bash"]
