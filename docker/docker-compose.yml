@@ -35,13 +35,6 @@ services:
      moodSickNetwork-10.9.0.0:
         ipv4_address: 10.9.0.7
   
-  ml_training:
-    build:
-      context: ./ml_training
-      dockerfile: Dockerfile
-    image: ml_training
-    tty: true
-  
   mongodb:
     platform: linux/arm64/v8
     image: mongo:7.0.4-rc0
