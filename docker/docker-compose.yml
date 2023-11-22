@@ -17,9 +17,9 @@ services:
       dockerfile: Dockerfile
     tty: true
     ports:
-      - 8080:8080
-    # volumes:
-    #   - ./middleware:/app
+      - 8080:80
+    volumes:
+      - ./middleware/app:/code/app
     networks:
       moodSickNetwork-10.9.0.0:
         ipv4_address: 10.9.0.6
