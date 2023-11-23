@@ -1,23 +1,17 @@
-# Use Ubuntu 20.04 LTS as the base image
-FROM ubuntu:20.04
+# Use the Python base image
+FROM python:3.9
 
-# Update the package lists and install necessary dependencies
-RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-pip \
-    nginx
+# Set the working directory inside the container to /code
+WORKDIR /code
 
-# Copy the requirements.txt file to the container
-RUN pip3 install --no-cache-dir -r requirements.txt
+# Copy the requirements.txt file 
+COPY ./requirements.txt /code/requirements.txt
 
-# Copy the Nginx configuration file
-COPY config/nginx.conf /etc/nginx/nginx.conf
+# Install the pip dependencies
+RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
-# Copy everything to the working directory
-COPY . .
+# Copy the contents of the ./app directory
+COPY ./app /code/app
 
-# Expose port 80 for Nginx
-EXPOSE 8000
-
-# Start Nginx and run the Flask application
-CMD service nginx start && python3 /app/app.py
+# Run the server
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]

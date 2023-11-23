@@ -1,7 +1,10 @@
 version: '3.8'
 services:
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    tty: true
     ports:
       - 3000:3000
     networks:
@@ -9,42 +12,42 @@ services:
         ipv4_address: 10.9.0.5
 
   middleware:
-    build: ./middleware
+    build:
+      context: ./middleware
+      dockerfile: Dockerfile
+    tty: true
     ports:
-      - 8080:8080
+      - 8080:80
     volumes:
-      - ./middleware:/app
+      - ./middleware/app:/code/app
     networks:
       moodSickNetwork-10.9.0.0:
         ipv4_address: 10.9.0.6
 
   ml:
-    build: ./ml
+    build:
+      context: ./ml
+      dockerfile: Dockerfile
+    tty: true
     ports:
       - 5000:5000
     networks:
      moodSickNetwork-10.9.0.0:
         ipv4_address: 10.9.0.7
   
-  ml_training:
-    build: ./ml_training
-    ports:
-      - 5008:5008
-    networks:
-      moodSickNetwork-10.9.0.0:
-        ipv4_address: 10.9.0.8
-  
   mongodb:
-    image: mongo:latest
+    platform: linux/arm64/v8
+    image: mongo:7.0.4-rc0
     ports:
-      - 27017:27017
+      - "27017:27017"
+    tty: true
     networks:
       moodSickNetwork-10.9.0.0:
-          ipv4_address: 10.9.0.9
+        ipv4_address: 10.9.0.9
     environment:
-      POSTGRES_USER: mongo
-      POSTGRES_PASSWORD: mongo
-      POSTGRES_DB: moodSickDB
+      MONGO_INITDB_ROOT_USERNAME: mongo
+      MONGO_INITDB_ROOT_PASSWORD: mongo
+      MONGO_INITDB_DATABASE: moodSickDB
 
 networks:
   moodSickNetwork-10.9.0.0:
