@@ -161,3 +161,7 @@ cython_debug/
 
 # Custom extensions to avoid pushing data upstream.
 data/*
+docker/ml_training/src/models/*.pt
+src/models/*.pt
+
+.DS_Store

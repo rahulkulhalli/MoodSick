@@ -12,9 +12,10 @@ class DatasetType(Enum):
 
 
 class Preprocessor:
-    def __init__(self, csv_path: str, save_crops: bool = False):
+    def __init__(self, csv_path: str, train_size: float = 0.8, save_crops: bool = False):
         self.csv_path = Path(csv_path)
-
+        self.train_size = train_size
+        self.test_size = 1. - self.train_size
         self.cropped_dir = self.csv_path.parent / 'cropped'
         if not self.cropped_dir.exists():
             self.cropped_dir.mkdir(exist_ok=False)
@@ -34,7 +35,7 @@ class Preprocessor:
             index = self.csv.loc[self.csv.label == genre, :].index
             # shuffle the indices.
             shuffled = np.random.permutation(index)
-            split = int(len(shuffled) * 0.8)
+            split = int(len(shuffled) * self.train_size)
             genre_dict[genre] = {DatasetType.TRAIN: shuffled[:split], DatasetType.TEST: shuffled[split:]}
         return genre_dict
 
@@ -48,10 +49,10 @@ class Preprocessor:
 
                 with Image.open(joined_path, 'r') as image:
                     # Convert from CMYK to RGB.
-                    image = image.convert('RGB')
+                    im = image.convert('RGB')
                     # Crop the image.
                     # (224, 352)
-                    im = image.crop(box=(44, 29, 396, 253))
+                    # im = im.crop(box=(44, 29, 396, 253))
                     im_name = 'cropped_' + im_path
                     im.save(path_to_save / im_name)
 

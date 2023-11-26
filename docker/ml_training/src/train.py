@@ -1,16 +1,21 @@
 import argparse
+import shutil
 
 import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 import torch.optim as optim
+from torch.optim.lr_scheduler import MultiStepLR
+from time import perf_counter
 
 import model_config
-from models.autoencoder import MultiModalEncoder
+# from models.autoencoder import MultiModalEncoder
+from models.static_autoencoder import ConvolutionalAutoencoder
 from utils.preprocessor import DatasetType
 from utils.dataset import AutoencoderDataset
 from utils.preprocessor import Preprocessor
+from utils import model_utils
 
 
 def parse_arguments():
@@ -31,12 +36,13 @@ def parse_arguments():
     return parser.parse_args()
 
 
-def train(model, optim, dataloader, loss_fn, **kwargs):
+def train(model, optim, dataloader, loss_fn):
 
     model.train()
     optim.zero_grad()
 
-    log_every = kwargs['log_every']
+    iters = len(dataloader)
+    log_every = iters//10
 
     losses = []
     for ix, (X, Y) in enumerate(dataloader):
@@ -48,8 +54,8 @@ def train(model, optim, dataloader, loss_fn, **kwargs):
 
         losses.append(loss.item())
 
-        if ix and ix % log_every == 0:
-            print(f"Loss: {np.nanmean(losses)}")
+        if log_every == 0 or (ix and ix % log_every == 0):
+            print(f"\t--> Loss: {np.nanmean(losses)}")
 
         loss.backward()
         optim.step()
@@ -59,7 +65,7 @@ def train(model, optim, dataloader, loss_fn, **kwargs):
 
 def evaluate(model, dataloader, loss_fn, **kwargs):
     model.eval()
-    log_every = kwargs['log_every']
+    log_every = len(dataloader)//5
 
     losses = []
     with torch.no_grad():
@@ -72,44 +78,90 @@ def evaluate(model, dataloader, loss_fn, **kwargs):
 
             losses.append(loss.item())
 
-            if ix and ix % log_every == 0:
-                print(f"Loss: {np.nanmean(losses)}")
+            if log_every == 0 or (ix and ix % log_every == 0):
+                print(f"\t--> Loss: {np.nanmean(losses)}")
 
     return losses
 
 
 if __name__ == "__main__":
+
     args = parse_arguments()
     device = torch.device('mps') if torch.backends.mps.is_available() else 'cpu'
     print(f"Device set to: {device}")
 
-    preprocessor = Preprocessor(args.data_path, save_crops=True)
+    preprocessor = Preprocessor(args.data_path, train_size=0.8, save_crops=True)
     print(f"Finished Cropping and computing statistics.")
 
     # Define the datasets and dataloaders.
-    train_dset = AutoencoderDataset(DatasetType.TRAIN, preprocessor.cropped_dir, preprocessor)
+    train_dset = AutoencoderDataset(DatasetType.TRAIN, preprocessor.cropped_dir, preprocessor, tsfm=True)
     train_loader = DataLoader(train_dset, batch_size=args.batch_size, shuffle=True)
 
-    test_dset = AutoencoderDataset(DatasetType.TEST, preprocessor.cropped_dir, preprocessor)
+    # Don't transform test data.
+    test_dset = AutoencoderDataset(DatasetType.TEST, preprocessor.cropped_dir, preprocessor, tsfm=False)
     test_loader = DataLoader(test_dset, batch_size=args.batch_size, shuffle=False)
 
     config = model_config.get_config()
 
-    model = MultiModalEncoder(im_size=1, config=config)
-    model = model.to(device)
-    print("Model loaded.")
+    # model = MultiModalEncoder(config=config)
+    # Instantiate the model
+    model = ConvolutionalAutoencoder()
 
-    optimizer = optim.Adam(model.parameters(), lr=1e-4)
+    model.apply(model_utils.weights_init)
+
+    model = model.to(device)
+    num_params = sum(p.numel() for p in model.parameters())
+    print(f"Model loaded. Number of trainable parameters: {num_params}")
+
+    # sample, _ = next(iter(train_loader))
+    # sample = sample.to(device)
+    # z, out = model(sample)
+    # step_every = 25
+
+    init_lr = 1e-3
+    optimizer = optim.Adam(model.parameters(), lr=init_lr)
+    scheduler = MultiStepLR(
+        optimizer,
+        milestones=[20*i for i in range(1, 12)],
+        gamma=0.9
+    )
+
     loss_fn = nn.MSELoss()
 
+    print("Initial LR: ", init_lr)
     print(50*'-')
 
-    total_losses = dict()
-    for epoch in range(1, args.epochs + 1):
-        tr_losses = train(model, optimizer, train_loader, loss_fn, log_every=100)
-        print(f"Mean train loss for epoch {epoch}: {np.nanmean(tr_losses)}")
+    try:
 
-        te_losses = evaluate(model, test_loader, loss_fn, log_every=100)
-        print(f"Mean test loss for epoch {epoch}: {np.nanmean(te_losses)}")
+        total_losses = dict()
+        start = perf_counter()
+        for epoch in range(1, args.epochs + 1):
+            tr_losses = train(model, optimizer, train_loader, loss_fn)
+            print(f"[Epoch {epoch}/{args.epochs}] Mean train loss: {np.nanmean(tr_losses)}")
 
-        total_losses[epoch] = {DatasetType.TRAIN: tr_losses, DatasetType.TEST: te_losses}
+            print(50 * '-')
+
+            te_losses = evaluate(model, test_loader, loss_fn, log_every=100)
+            print(f"[Epoch {epoch}/{args.epochs}] Mean test loss: {np.nanmean(te_losses)}")
+
+            print(50 * '-')
+
+            total_losses[epoch] = {DatasetType.TRAIN: tr_losses, DatasetType.TEST: te_losses}
+            scheduler.step()
+            print("Learning rate: ", optimizer.param_groups[0]['lr'])
+            print(50 * '+')
+
+        sample, _ = next(iter(test_loader))
+        model_utils.generate_previews(model, sample, device)
+        model_utils.plot_losses(total_losses)
+        print(f"Training took {(perf_counter() - start)/60} minutes.")
+        model_utils.save_model(model, dir='./models/unet_1.pt')
+
+    except KeyboardInterrupt:
+        # show a sample.
+        sample, _ = next(iter(test_loader))
+        model_utils.generate_previews(model, sample, device)
+
+    finally:
+        # # Delete the temporary cropped dir.
+        shutil.rmtree('../data/gztan/cropped', ignore_errors=False)

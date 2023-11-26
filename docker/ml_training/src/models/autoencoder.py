@@ -1,10 +1,10 @@
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 class MultiModalEncoder(nn.Module):
-    def __init__(self, im_size: int, config: dict):
+    def __init__(self, config: dict):
         super(MultiModalEncoder, self).__init__()
-        self.im_size = im_size
         self.config = config
         self.encoder = self._make_encoder()
         self.decoder = self._make_decoder()
@@ -18,13 +18,22 @@ class MultiModalEncoder(nn.Module):
                 padding=config['padding'],
                 kernel_size=config['ksize'],
                 stride=config['stride'],
-                bias=False
+                bias=config['bias'] if 'bias' in config else False
             )
         )
-        if config['act'] == 'relu':
-            layers.append(nn.ReLU(inplace=False))
-        elif config['act'] == 'lrelu':
-            layers.append(nn.LeakyReLU(negative_slope=0.01, inplace=False))
+
+        if 'bn' in config and config['bn']:
+            layers.append(nn.BatchNorm2d(config['out']))
+
+        if 'act' in config:
+            if config['act'] == 'relu':
+                layers.append(nn.ReLU(inplace=True))
+            elif config['act'] == 'lrelu':
+                layers.append(nn.LeakyReLU(negative_slope=0.01, inplace=True))
+            elif config['act'] == 'sigmoid':
+                layers.append(nn.Sigmoid())
+            elif config['act'] == 'elu':
+                layers.append(nn.ELU(alpha=1.0, inplace=True))
         return nn.Sequential(*layers)
 
     def _deconv_block(self, config: dict):
@@ -40,10 +49,19 @@ class MultiModalEncoder(nn.Module):
                 bias=False
             )
         )
-        if config['act'] == 'relu':
-            layers.append(nn.ReLU(inplace=False))
-        elif config['act'] == 'lrelu':
-            layers.append(nn.LeakyReLU(negative_slope=0.01, inplace=False))
+
+        if 'bn' in config and config['bn']:
+            layers.append(nn.BatchNorm2d(config['out']))
+
+        if 'act' in config:
+            if config['act'] == 'relu':
+                layers.append(nn.ReLU(inplace=True))
+            elif config['act'] == 'lrelu':
+                layers.append(nn.LeakyReLU(negative_slope=0.01, inplace=True))
+            elif config['act'] == 'sigmoid':
+                layers.append(nn.Sigmoid())
+            elif config['act'] == 'elu':
+                layers.append(nn.ELU(alpha=1.0, inplace=True))
         return nn.Sequential(*layers)
 
     def _linear(self, config: dict):
@@ -55,19 +73,34 @@ class MultiModalEncoder(nn.Module):
                 bias=config['bias']
             )
         )
+
+        if 'bn' in config and config['bn']:
+            layers.append(nn.BatchNorm2d(config['out']))
+
         if 'act' in config:
             if config['act'] == 'relu':
-                layers.append(nn.ReLU(inplace=False))
+                layers.append(nn.ReLU(inplace=True))
             elif config['act'] == 'lrelu':
-                layers.append(nn.LeakyReLU(negative_slope=0.01, inplace=False))
+                layers.append(nn.LeakyReLU(negative_slope=0.01, inplace=True))
+            elif config['act'] == 'elu':
+                layers.append(nn.ELU(alpha=1.0, inplace=True))
 
         return nn.Sequential(*layers)
 
     def _flatten(self):
         return nn.Sequential(nn.Flatten())
 
+    def _avgpool(self):
+        return nn.Sequential(nn.AdaptiveAvgPool2d(output_size=(1, 1)))
+
     def _reshape(self, config: dict):
         return nn.Sequential(nn.Unflatten(dim=1, unflattened_size=config['out']))
+
+    def _mpool(self):
+        return nn.Sequential(nn.MaxPool2d(kernel_size=(2, 2)))
+
+    def _upsample(self):
+        return nn.Sequential(nn.Upsample(scale_factor=2, mode='bilinear'))
 
     def _make_encoder(self):
         encoder_config = self.config['encoder']
@@ -80,6 +113,10 @@ class MultiModalEncoder(nn.Module):
                 encoder.append(self._linear(config))
             elif 'flatten' in layer_type:
                 encoder.append(self._flatten())
+            elif 'avg_pool2d' in layer_type:
+                encoder.append(self._avgpool())
+            elif 'mpool' in layer_type:
+                encoder.append(self._mpool())
 
         return encoder
 
@@ -94,6 +131,11 @@ class MultiModalEncoder(nn.Module):
                 decoder.append(self._reshape(config))
             elif 'deconv' in layer_type:
                 decoder.append(self._deconv_block(config))
+            elif 'conv' in layer_type and 'de' not in layer_type:
+                # CONV layer.
+                decoder.append(self._conv_block(config))
+            elif 'upsample' in layer_type:
+                decoder.append(self._upsample())
 
         return decoder
 
@@ -102,6 +144,7 @@ class MultiModalEncoder(nn.Module):
         # Pass through the encoder.
         for module in self.encoder:
             im = module(im)
+            # print('enc: ', im.size())
 
         # Obtain a reference to the bottleneck.
         x = im
@@ -109,5 +152,6 @@ class MultiModalEncoder(nn.Module):
         # Pass through the decoder.
         for module in self.decoder:
             im = module(im)
+            # print('dec: ', im.size())
 
-        return x, im
+        return x, F.sigmoid(im)
