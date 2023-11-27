@@ -1,21 +1,16 @@
 import argparse
-import shutil
+from time import perf_counter
 
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
 import torch.optim as optim
 from torch.optim.lr_scheduler import MultiStepLR
-from time import perf_counter
 
-import model_config
-# from models.autoencoder import MultiModalEncoder
 from models.static_autoencoder import ConvolutionalAutoencoder
-from utils.preprocessor import DatasetType
-from utils.dataset import AutoencoderDataset
-from utils.preprocessor import Preprocessor
 from utils import model_utils
+from utils.preprocessor import DatasetType
+from utils.preprocessor import Preprocessor
 
 
 def parse_arguments():
@@ -63,7 +58,7 @@ def train(model, optim, dataloader, loss_fn):
     return losses
 
 
-def evaluate(model, dataloader, loss_fn, **kwargs):
+def evaluate(model, dataloader, loss_fn):
     model.eval()
     log_every = len(dataloader)//5
 
@@ -90,20 +85,18 @@ if __name__ == "__main__":
     device = torch.device('mps') if torch.backends.mps.is_available() else 'cpu'
     print(f"Device set to: {device}")
 
-    preprocessor = Preprocessor(args.data_path, train_size=0.8, save_crops=True)
-    print(f"Finished Cropping and computing statistics.")
+    preprocessor = Preprocessor(args.data_path, train_size=0.8)
 
-    # Define the datasets and dataloaders.
-    train_dset = AutoencoderDataset(DatasetType.TRAIN, preprocessor.cropped_dir, preprocessor, tsfm=True)
-    train_loader = DataLoader(train_dset, batch_size=args.batch_size, shuffle=True)
+    train_loader = preprocessor.get_dataloader(DatasetType.TRAIN, batch_size=args.batch_size)
+    test_loader = preprocessor.get_dataloader(DatasetType.TEST, batch_size=args.batch_size, shuffle=False)
 
-    # Don't transform test data.
-    test_dset = AutoencoderDataset(DatasetType.TEST, preprocessor.cropped_dir, preprocessor, tsfm=False)
-    test_loader = DataLoader(test_dset, batch_size=args.batch_size, shuffle=False)
+    print(
+        f"Length of train dataloader: {len(train_loader) * args.batch_size}"
+        f", length of test dataloader: {len(test_loader) * args.batch_size}"
+    )
 
-    config = model_config.get_config()
+    # config = model_config.get_config()
 
-    # model = MultiModalEncoder(config=config)
     # Instantiate the model
     model = ConvolutionalAutoencoder()
 
@@ -113,17 +106,12 @@ if __name__ == "__main__":
     num_params = sum(p.numel() for p in model.parameters())
     print(f"Model loaded. Number of trainable parameters: {num_params}")
 
-    # sample, _ = next(iter(train_loader))
-    # sample = sample.to(device)
-    # z, out = model(sample)
-    # step_every = 25
-
-    init_lr = 1e-3
+    init_lr = 2e-3
     optimizer = optim.Adam(model.parameters(), lr=init_lr)
     scheduler = MultiStepLR(
         optimizer,
-        milestones=[20*i for i in range(1, 12)],
-        gamma=0.9
+        milestones=[10*i for i in range(1, args.epochs//10)],
+        gamma=0.95
     )
 
     loss_fn = nn.MSELoss()
@@ -141,7 +129,7 @@ if __name__ == "__main__":
 
             print(50 * '-')
 
-            te_losses = evaluate(model, test_loader, loss_fn, log_every=100)
+            te_losses = evaluate(model, test_loader, loss_fn)
             print(f"[Epoch {epoch}/{args.epochs}] Mean test loss: {np.nanmean(te_losses)}")
 
             print(50 * '-')
@@ -155,13 +143,9 @@ if __name__ == "__main__":
         model_utils.generate_previews(model, sample, device)
         model_utils.plot_losses(total_losses)
         print(f"Training took {(perf_counter() - start)/60} minutes.")
-        model_utils.save_model(model, dir='./models/unet_1.pt')
+        model_utils.save_model(model, dir='./models/unet_2.pt')
 
     except KeyboardInterrupt:
         # show a sample.
         sample, _ = next(iter(test_loader))
         model_utils.generate_previews(model, sample, device)
-
-    finally:
-        # # Delete the temporary cropped dir.
-        shutil.rmtree('../data/gztan/cropped', ignore_errors=False)

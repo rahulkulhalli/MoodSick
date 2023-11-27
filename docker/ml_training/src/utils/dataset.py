@@ -26,7 +26,7 @@ class AutoencoderDataset(Dataset):
 
     def _load(self):
         rows = []
-        for genre in self.preprocessor.genre_statistics.keys():
+        for genre in self.preprocessor.get_genre_dict().keys():
             subdir = self.dir / genre / 'train' if self.dset == DatasetType.TRAIN else self.dir / genre / 'test'
             pngs = list(subdir.glob('*.png'))
             for png_file in pngs:

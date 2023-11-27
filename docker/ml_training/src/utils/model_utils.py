@@ -26,7 +26,7 @@ def generate_previews(model, test_input, device):
 
     _, predicted = model(_input)
 
-    grid = make_grid(predicted, nrow=4, normalize=False)
+    grid = make_grid(predicted, nrow=8, normalize=False)
     show(grid)
 
 

@@ -1,33 +1,92 @@
+import torch
+
+from PIL import Image
 from enum import Enum
 from pathlib import Path
+from torch.utils.data import DataLoader, Dataset
 
+import torchvision.transforms as tsfm
 import numpy as np
 import pandas as pd
-from PIL import Image
 
 
 class DatasetType(Enum):
     TRAIN = 0
     TEST = 1
+    FULL = 2
+
+
+class CustomDataset(Dataset):
+    def __init__(self, genre_dict: dict, dset: DatasetType):
+
+        self.g_dict = genre_dict
+        self.dset = dset
+        self.data = self._make_data()
+
+        # Set-up transform functions.
+        self.transforms = {
+            DatasetType.TRAIN: tsfm.Compose(
+                [
+                    tsfm.PILToTensor(),
+                    tsfm.RandomCrop(size=256),
+                    tsfm.RandomRotation(degrees=(0, 180)),
+                    tsfm.ConvertImageDtype(torch.float),
+                ]
+            ),
+            DatasetType.TEST: tsfm.Compose(
+                [
+                    tsfm.PILToTensor(),
+                    tsfm.CenterCrop(256),
+                    tsfm.ConvertImageDtype(torch.float)
+                ]
+            ),
+            DatasetType.FULL: tsfm.Compose(
+                [
+                    tsfm.PILToTensor(),
+                    tsfm.CenterCrop(256),
+                    tsfm.ConvertImageDtype(torch.float)
+                ]
+            )
+        }
+
+    def _make_data(self):
+        data = list()
+        for genre in self.g_dict.keys():
+            data.extend(self.g_dict[genre][self.dset])
+
+        data = [d for d in data if Path(d).exists()]
+        return data
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, item):
+        data = self.data[item]
+
+        with Image.open(data, 'r') as image:
+            image = image.convert('RGB')
+            x = self.transforms[self.dset](image)
+
+        return x, x
 
 
 class Preprocessor:
-    def __init__(self, csv_path: str, train_size: float = 0.8, save_crops: bool = False):
-        self.csv_path = Path(csv_path)
+    def __init__(self, data_path: str, train_size: float = 0.8):
+        self.data_path = Path(data_path)
         self.train_size = train_size
         self.test_size = 1. - self.train_size
-        self.cropped_dir = self.csv_path.parent / 'cropped'
-        if not self.cropped_dir.exists():
-            self.cropped_dir.mkdir(exist_ok=False)
-            print("Created cropped dir.")
 
-        self.csv = pd.read_csv(csv_path)
+        # Read the CSV file.
+        self.csv = pd.read_csv(self.data_path / 'features_30_sec.csv')
 
         # Add a column for the filepath.
-        self.csv['im_path'] = self.csv.apply(lambda x: x.filename.strip('wav').replace('.', '') + '.png', axis=1)
+        self.csv['im_path'] = self.csv.apply(
+            lambda x: data_path + '/images_original/' + x.label + '/'
+                      + x.filename.strip('wav').replace('.', '') + '.png',
+            axis=1
+        )
 
-        self.genre_ix = self._make_ix_splits()
-        self.genre_statistics = self.preprocess_image_and_compute_stats(save_crops)
+        self._genre_dict = self._make_ix_splits()
 
     def _make_ix_splits(self):
         genre_dict = dict()
@@ -36,70 +95,30 @@ class Preprocessor:
             # shuffle the indices.
             shuffled = np.random.permutation(index)
             split = int(len(shuffled) * self.train_size)
-            genre_dict[genre] = {DatasetType.TRAIN: shuffled[:split], DatasetType.TEST: shuffled[split:]}
+
+            train_files = self.csv.loc[shuffled[:split], 'im_path'].tolist()
+            test_files = self.csv.loc[shuffled[split:], 'im_path'].tolist()
+            all_files = self.csv.loc[shuffled, 'im_path'].tolist()
+
+            genre_dict[genre] = {
+                DatasetType.TRAIN: train_files,
+                DatasetType.TEST: test_files,
+                DatasetType.FULL: all_files
+            }
+
         return genre_dict
 
-    def preprocess_image_and_compute_stats(self, save_crops=False):
+    def get_genre_dict(self):
+        return self._genre_dict
 
-        def _save_images(genre, im_paths, path_to_save):
-            for im_path in im_paths:
-                joined_path = self.csv_path.parent / 'images_original' / genre / im_path
-                if not joined_path.exists():
-                    continue
+    def get_dataloader(self, dset: DatasetType, batch_size: int = 128, shuffle: bool = True):
+        if self._genre_dict is None:
+            raise NotImplementedError("Genre dict is not created.")
 
-                with Image.open(joined_path, 'r') as image:
-                    # Convert from CMYK to RGB.
-                    im = image.convert('RGB')
-                    # Crop the image.
-                    # (224, 352)
-                    # im = im.crop(box=(44, 29, 396, 253))
-                    im_name = 'cropped_' + im_path
-                    im.save(path_to_save / im_name)
+        dataset = CustomDataset(self._genre_dict, dset)
 
-        def _compute_stats(im_path):
-            images = list(im_path.glob('*.png'))
-            means = []
-            stds = []
-            for image in images:
-                with Image.open(image, 'r') as im:
-                    # Convert the cropped images to ndarrays
-                    arr = np.asarray(im)
-                    # Compute channel-wise means
-                    means.append(np.mean(arr, axis=(0, 1), keepdims=True))
-
-                    # Compute the channel-wise
-                    stds.append(np.std(arr, axis=(0, 1), keepdims=True))
-
-            return (
-                np.mean(np.concatenate(means, axis=0), axis=0).flatten(),
-                np.mean(np.concatenate(stds, axis=0), axis=0).flatten()
-            )
-
-        genre_stats = dict()
-
-        for genre, genre_dict in self.genre_ix.items():
-            train_df = self.csv.loc[genre_dict[DatasetType.TRAIN]]
-            test_df = self.csv.loc[genre_dict[DatasetType.TEST]]
-
-            print(f"genre: {genre}, train: {train_df.shape}, test: {test_df.shape}")
-
-            genre_dir = self.cropped_dir / genre
-            if not genre_dir.exists():
-                genre_dir.mkdir(exist_ok=False)
-
-            train_dir = genre_dir / 'train'
-            if not train_dir.exists():
-                train_dir.mkdir(exist_ok=False)
-
-            test_dir = genre_dir / 'test'
-            if not test_dir.exists():
-                test_dir.mkdir(exist_ok=False)
-
-            if save_crops:
-                _save_images(genre, train_df.im_path, train_dir)
-                _save_images(genre, test_df.im_path, test_dir)
-
-            genre_mean, genre_std = _compute_stats(train_dir)
-            genre_stats[genre] = {'mean': genre_mean, 'std': genre_std}
-
-        return genre_stats
+        return DataLoader(
+            dataset,
+            batch_size=batch_size,
+            shuffle=shuffle
+        )
