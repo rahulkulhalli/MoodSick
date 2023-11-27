@@ -40,7 +40,7 @@ def train(model, optim, dataloader, loss_fn):
     log_every = iters//10
 
     losses = []
-    for ix, (X, Y) in enumerate(dataloader):
+    for ix, (X, Y, genre) in enumerate(dataloader):
         X = X.to(device)
         Y = Y.to(device)
 
@@ -64,7 +64,7 @@ def evaluate(model, dataloader, loss_fn):
 
     losses = []
     with torch.no_grad():
-        for ix, (X, Y) in enumerate(dataloader):
+        for ix, (X, Y, genre) in enumerate(dataloader):
             X = X.to(device)
             Y = Y.to(device)
 
@@ -139,7 +139,7 @@ if __name__ == "__main__":
             print("Learning rate: ", optimizer.param_groups[0]['lr'])
             print(50 * '+')
 
-        sample, _ = next(iter(test_loader))
+        sample, _, _ = next(iter(test_loader))
         model_utils.generate_previews(model, sample, device)
         model_utils.plot_losses(total_losses)
         print(f"Training took {(perf_counter() - start)/60} minutes.")
@@ -147,5 +147,5 @@ if __name__ == "__main__":
 
     except KeyboardInterrupt:
         # show a sample.
-        sample, _ = next(iter(test_loader))
+        sample, _, _ = next(iter(test_loader))
         model_utils.generate_previews(model, sample, device)

@@ -1,6 +1,7 @@
 import torch
 import torchvision.transforms.functional as F
 from torchvision.utils import make_grid
+from pathlib import Path
 import numpy as np
 import torch.nn as nn
 import matplotlib.pyplot as plt
@@ -60,3 +61,10 @@ def plot_losses(losses: dict):
 def save_model(model: nn.Module, dir: str):
     torch.save(model.state_dict(), dir)
     print(f"Model successfully saved at {dir}.")
+
+
+def load_model(model: nn.Module, weights: Path):
+    assert weights.exists()
+
+    # Load the model weights on the cpu.
+    return model.load_state_dict(torch.load(weights, map_location='cpu'))

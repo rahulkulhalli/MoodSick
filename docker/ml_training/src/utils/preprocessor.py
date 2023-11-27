@@ -17,11 +17,10 @@ class DatasetType(Enum):
 
 
 class CustomDataset(Dataset):
-    def __init__(self, genre_dict: dict, dset: DatasetType):
+    def __init__(self, splits_df: dict, dset: DatasetType):
 
-        self.g_dict = genre_dict
+        self.splits = splits_df
         self.dset = dset
-        self.data = self._make_data()
 
         # Set-up transform functions.
         self.transforms = {
@@ -49,25 +48,17 @@ class CustomDataset(Dataset):
             )
         }
 
-    def _make_data(self):
-        data = list()
-        for genre in self.g_dict.keys():
-            data.extend(self.g_dict[genre][self.dset])
-
-        data = [d for d in data if Path(d).exists()]
-        return data
-
     def __len__(self):
-        return len(self.data)
+        return len(self.splits[self.dset])
 
     def __getitem__(self, item):
-        data = self.data[item]
+        metadata = self.splits[self.dset].loc[item, :].to_dict()
 
-        with Image.open(data, 'r') as image:
+        with Image.open(metadata['im_path'], 'r') as image:
             image = image.convert('RGB')
             x = self.transforms[self.dset](image)
 
-        return x, x
+        return x, x, metadata
 
 
 class Preprocessor:
@@ -86,19 +77,30 @@ class Preprocessor:
             axis=1
         )
 
-        self._genre_dict = self._make_ix_splits()
+        self._splits_df = self._make_ix_splits()
 
     def _make_ix_splits(self):
         genre_dict = dict()
+        data = self.csv[['im_path', 'label']].copy()
         for genre in self.csv.label.unique():
-            index = self.csv.loc[self.csv.label == genre, :].index
-            # shuffle the indices.
-            shuffled = np.random.permutation(index)
-            split = int(len(shuffled) * self.train_size)
 
-            train_files = self.csv.loc[shuffled[:split], 'im_path'].tolist()
-            test_files = self.csv.loc[shuffled[split:], 'im_path'].tolist()
-            all_files = self.csv.loc[shuffled, 'im_path'].tolist()
+            indices = data.loc[data.label == genre, :].index.tolist()
+            split = int(len(indices) * self.train_size)
+
+            train_files = data.loc[indices[:split], :]
+            train_files = train_files.loc[
+                train_files.apply(lambda x: Path(x.im_path).exists(), axis=1), :
+            ].reset_index(drop=True, inplace=False)
+
+            test_files = data.loc[indices[split:], :]
+            test_files = test_files.loc[
+                          test_files.apply(lambda x: Path(x.im_path).exists(), axis=1), :
+            ].reset_index(drop=True, inplace=False)
+
+            all_files = data.loc[indices, :]
+            all_files = all_files.loc[
+                         all_files.apply(lambda x: Path(x.im_path).exists(), axis=1), :
+            ].reset_index(drop=True, inplace=False)
 
             genre_dict[genre] = {
                 DatasetType.TRAIN: train_files,
@@ -106,16 +108,31 @@ class Preprocessor:
                 DatasetType.FULL: all_files
             }
 
-        return genre_dict
+        train_df = pd.concat(
+            [genre_dict[g][DatasetType.TRAIN] for g in genre_dict.keys()],
+            axis=0
+        ).reset_index(drop=True, inplace=False)
 
-    def get_genre_dict(self):
-        return self._genre_dict
+        test_df = pd.concat(
+            [genre_dict[g][DatasetType.TEST] for g in genre_dict.keys()],
+            axis=0
+        ).reset_index(drop=True, inplace=False)
+
+        full_df = pd.concat(
+            [genre_dict[g][DatasetType.FULL] for g in genre_dict.keys()],
+            axis=0
+        ).reset_index(drop=True, inplace=False)
+
+        return {DatasetType.TRAIN: train_df, DatasetType.TEST: test_df, DatasetType.FULL: full_df}
+
+    def get_splits(self):
+        return self._splits_df
 
     def get_dataloader(self, dset: DatasetType, batch_size: int = 128, shuffle: bool = True):
-        if self._genre_dict is None:
+        if self._splits_df is None:
             raise NotImplementedError("Genre dict is not created.")
 
-        dataset = CustomDataset(self._genre_dict, dset)
+        dataset = CustomDataset(self._splits_df, dset)
 
         return DataLoader(
             dataset,
