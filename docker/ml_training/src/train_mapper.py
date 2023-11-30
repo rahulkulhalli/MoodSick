@@ -1,17 +1,16 @@
 import os
+
 import pyro
-import pyro.distributions as dist
-import torch
+from dotenv import load_dotenv
+from pymongo import MongoClient
 from pyro.infer import SVI, Trace_ELBO
 from pyro.infer.autoguide import AutoDiagonalNormal
 from pyro.optim import Adam
 
-from dotenv import load_dotenv
-from pymongo import MongoClient
+from models.mapper_network import MappingNetwork
 from utils.db_utils import download_embeddings
 from utils.preprocessor import DatasetType
 from utils.spotify_preprocessor import SpotifyPreprocessor
-from models.mapper_network import MappingNetwork
 
 
 def train(_epoch, _model, _guide, _svi, dataloader, _device):
@@ -58,8 +57,8 @@ if __name__ == "__main__":
 
     # Get preprocessor.
     preprocessor = SpotifyPreprocessor(embeddings, '../data')
-    train_loader = preprocessor.get_dataloader(DatasetType.TRAIN, batch_size=8)
-    test_loader = preprocessor.get_dataloader(DatasetType.TEST, batch_size=8)
+    train_loader = preprocessor.get_dataloader(DatasetType.TRAIN, batch_size=64)
+    test_loader = preprocessor.get_dataloader(DatasetType.TEST, batch_size=64)
 
     # for _, (x, y) in enumerate(train_loader):
     #     print(x.size(), y.size())
@@ -72,11 +71,11 @@ if __name__ == "__main__":
 
     print("Model and guide initialized.")
 
-    svi = SVI(model, guide, Adam({"lr": 0.01}), loss=Trace_ELBO())
+    svi = SVI(model, guide, Adam({"lr": 0.001}), loss=Trace_ELBO())
 
     print("SVI initialized")
 
-    epochs = 20
+    epochs = 100
     for epoch in range(epochs):
         train(epoch, model, guide, svi, train_loader, device)
 

@@ -32,7 +32,7 @@ def generate_previews(model, test_input, device):
 
 
 def weights_init(m):
-    if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d, nn.Linear)):
+    if isinstance(m, (nn.Conv1d, nn.Conv2d, nn.ConvTranspose2d, nn.Linear)):
         nn.init.xavier_uniform_(m.weight.data)
         if m.bias is not None:
             nn.init.zeros_(m.bias.data)
