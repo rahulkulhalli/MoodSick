@@ -62,16 +62,14 @@ if __name__ == "__main__":
     model = MapperMCMC()
     model.load_state_dict(torch.load(weights_dir, map_location='cpu'))
 
-    # print(summary(model, (1024,)))
-
     print("Model and weights loaded on CPU")
 
     sample = [
-        {'filename': '../data/gztan/images_original/blues/blues00016.png', 'rating': 4},
-        {'filename': '../data/gztan/images_original/rock/rock00069.png', 'rating': 1},
-        {'filename': '../data/gztan/images_original/jazz/jazz00009.png', 'rating': 5},
-        {'filename': '../data/gztan/images_original/pop/pop00001.png', 'rating': 3},
-        {'filename': '../data/gztan/images_original/classical/classical00091.png', 'rating': 4}
+        {'filename': 'blues00016', 'rating': 4},
+        {'filename': 'rock00069', 'rating': 1},
+        {'filename': 'jazz00009', 'rating': 5},
+        {'filename': 'pop00001', 'rating': 3},
+        {'filename': 'classical00091', 'rating': 4}
     ]
 
     # Add a dummy batch dim.

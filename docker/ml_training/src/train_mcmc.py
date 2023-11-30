@@ -27,7 +27,7 @@ def train(_epoch, _model, dataloader, _device, _opt, _criterion):
 
     print_steps = len(dataloader) // 5
 
-    epoch_losses = []
+    losses = []
     for ix, (x, y) in enumerate(dataloader):
 
         _opt.zero_grad()
@@ -37,13 +37,15 @@ def train(_epoch, _model, dataloader, _device, _opt, _criterion):
 
         preds = _model(x)
         loss = _criterion(preds, y)
-        epoch_losses.append(loss.item())
+        losses.append(loss.item())
 
         if ix and ix % print_steps == 0:
-            print(f"Epoch {_epoch}, batch_ix {ix} | Mean train loss: {np.nanmean(epoch_losses)}")
+            print(f"Epoch {_epoch}, batch_ix {ix} | Mean train loss: {np.nanmean(losses)}")
 
         loss.backward()
         _opt.step()
+
+    return losses
 
 
 def test(_epoch, _model, _loader, _device, _criterion, num_passes=5):
@@ -84,6 +86,8 @@ def test(_epoch, _model, _loader, _device, _criterion, num_passes=5):
 
             if ix and ix % print_every == 0:
                 print(f"Epoch {_epoch}, batch_ix {ix} | Mean test loss: {np.nanmean(losses)}")
+
+    return losses
 
 
 if __name__ == "__main__":
@@ -126,16 +130,26 @@ if __name__ == "__main__":
     criterion = nn.MSELoss()
 
     epochs = 250
+    loss_dict = dict()
     for epoch in range(epochs):
-        train(epoch, model, train_loader, device, opt, criterion)
 
-        if epoch and epoch % 10 == 0:
-            print(50*'~')
-            test(epoch, model, test_loader, device, criterion, num_passes=10)
-            print(50 * '~')
+        loss_dict[epoch] = {}
+
+        tr_epoch_losses = train(epoch, model, train_loader, device, opt, criterion)
+        loss_dict[epoch][DatasetType.TRAIN] = tr_epoch_losses
+
+        print(50*'+')
+
+        te_epoch_losses = test(epoch, model, test_loader, device, criterion, num_passes=10)
+        loss_dict[epoch][DatasetType.TEST] = te_epoch_losses
+
+        print(50 * '+')
 
         if epoch and epoch % 50 == 0:
             print("Bumping down LR by 5%")
             opt.param_groups[0]['lr'] *= 0.95
+
+    # Plot losses.
+    model_utils.plot_losses(loss_dict)
 
     model_utils.save_model(model, "./models/mcmc.pt")
