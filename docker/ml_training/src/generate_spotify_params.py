@@ -1,8 +1,7 @@
 import torch
 import torch.nn as nn
 from models.MapperMCMC import MapperMCMC
-from utils import db_utils
-# from torchsummary import summary
+from utils import inference_utils
 from pprint import pprint
 
 
@@ -65,15 +64,15 @@ if __name__ == "__main__":
     print("Model and weights loaded on CPU")
 
     sample = [
-        {'filename': 'blues00016', 'rating': 4},
-        {'filename': 'rock00069', 'rating': 1},
-        {'filename': 'jazz00009', 'rating': 5},
-        {'filename': 'pop00001', 'rating': 3},
-        {'filename': 'classical00091', 'rating': 4}
+        {'query': 'blues00016', 'rating': '4'},
+        {'query': 'rock00069', 'rating': 1.0},
+        {'query': 'jazz00009', 'rating': 5},
+        {'query': 'pop00001', 'rating': '3'},
+        {'query': 'classical00091', 'rating': 4}
     ]
 
     # Add a dummy batch dim.
-    aggregate_embedding = db_utils.compute_aggregate_embedding(sample).unsqueeze(0)
+    aggregate_embedding = inference_utils.compute_aggregate_embedding(sample).unsqueeze(0)
     response = run_mcmc_inference(model, aggregate_embedding)
 
     pprint(response)
