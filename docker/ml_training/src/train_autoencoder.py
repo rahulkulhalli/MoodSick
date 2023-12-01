@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.optim.lr_scheduler import MultiStepLR
 
-from models.static_autoencoder import ConvolutionalAutoencoder
+from models.autoencoder import ConvolutionalAutoencoder
 from utils import model_utils
 from utils.preprocessor import DatasetType
 from utils.preprocessor import Preprocessor

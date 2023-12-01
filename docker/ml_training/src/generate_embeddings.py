@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from dotenv import load_dotenv
 from tqdm import tqdm
 
-from models.static_autoencoder import ConvolutionalAutoencoder
+from models.autoencoder import ConvolutionalAutoencoder
 from utils import model_utils
 from utils.preprocessor import DatasetType
 from utils.preprocessor import Preprocessor

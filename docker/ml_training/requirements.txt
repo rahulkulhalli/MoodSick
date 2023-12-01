@@ -5,3 +5,5 @@ pandas
 matplotlib 
 pillow 
 scikit-learn
+pymongo
+python-dotenv

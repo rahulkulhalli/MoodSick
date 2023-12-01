@@ -2,156 +2,107 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class MultiModalEncoder(nn.Module):
-    def __init__(self, config: dict):
-        super(MultiModalEncoder, self).__init__()
-        self.config = config
-        self.encoder = self._make_encoder()
-        self.decoder = self._make_decoder()
+class ResidualBlock(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(ResidualBlock, self).__init__()
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1)
+        self.elu = nn.ELU()
+        self.batchnorm = nn.BatchNorm2d(out_channels)
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1)
 
-    def _conv_block(self, config: dict):
-        layers = list()
-        layers.append(
-            nn.Conv2d(
-                in_channels=config['in'],
-                out_channels=config['out'],
-                padding=config['padding'],
-                kernel_size=config['ksize'],
-                stride=config['stride'],
-                bias=config['bias'] if 'bias' in config else False
-            )
-        )
+    def forward(self, x):
+        residual = x
+        out = self.conv1(x)
+        out = self.elu(out)
+        out = self.batchnorm(out)
+        out = self.conv2(out)
+        out = self.elu(out)
+        out = self.batchnorm(out)
+        out += residual
+        return out
 
-        if 'bn' in config and config['bn']:
-            layers.append(nn.BatchNorm2d(config['out']))
 
-        if 'act' in config:
-            if config['act'] == 'relu':
-                layers.append(nn.ReLU(inplace=True))
-            elif config['act'] == 'lrelu':
-                layers.append(nn.LeakyReLU(negative_slope=0.01, inplace=True))
-            elif config['act'] == 'sigmoid':
-                layers.append(nn.Sigmoid())
-            elif config['act'] == 'elu':
-                layers.append(nn.ELU(alpha=1.0, inplace=True))
-        return nn.Sequential(*layers)
+class EncoderBlock(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(EncoderBlock, self).__init__()
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=2, padding=1)
+        self.elu = nn.ELU()
+        self.batchnorm = nn.BatchNorm2d(out_channels)
+        self.residual = ResidualBlock(out_channels, out_channels)
 
-    def _deconv_block(self, config: dict):
-        layers = list()
-        layers.append(
-            nn.ConvTranspose2d(
-                in_channels=config['in'],
-                out_channels=config['out'],
-                padding=config['padding'],
-                kernel_size=config['ksize'],
-                output_padding=config['output_padding'] if 'output_padding' in config else 0,
-                stride=config['stride'],
-                bias=False
-            )
-        )
+    def forward(self, x):
+        out = self.conv(x)
+        out = self.elu(out)
+        out = self.batchnorm(out)
+        out = self.residual(out)
+        return out
 
-        if 'bn' in config and config['bn']:
-            layers.append(nn.BatchNorm2d(config['out']))
 
-        if 'act' in config:
-            if config['act'] == 'relu':
-                layers.append(nn.ReLU(inplace=True))
-            elif config['act'] == 'lrelu':
-                layers.append(nn.LeakyReLU(negative_slope=0.01, inplace=True))
-            elif config['act'] == 'sigmoid':
-                layers.append(nn.Sigmoid())
-            elif config['act'] == 'elu':
-                layers.append(nn.ELU(alpha=1.0, inplace=True))
-        return nn.Sequential(*layers)
+class DecoderBlock(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(DecoderBlock, self).__init__()
+        self.deconv = nn.ConvTranspose2d(in_channels, out_channels, kernel_size=3, stride=2, padding=1,
+                                         output_padding=1)
+        self.elu = nn.ELU()
+        self.batchnorm = nn.BatchNorm2d(out_channels)
+        self.residual = ResidualBlock(out_channels, out_channels)
 
-    def _linear(self, config: dict):
-        layers = list()
-        layers.append(
-            nn.Linear(
-                in_features=config['in'],
-                out_features=config['out'],
-                bias=config['bias']
-            )
-        )
+    def forward(self, x, skip_connection):
+        out = self.deconv(x)
+        out = self.elu(out)
+        out = self.batchnorm(out)
 
-        if 'bn' in config and config['bn']:
-            layers.append(nn.BatchNorm2d(config['out']))
+        # Ensure that skip_connection has the same number of channels as out
+        # skip_connection = skip_connection[:, :out.size(1), :out.size(2), :out.size(3)]
 
-        if 'act' in config:
-            if config['act'] == 'relu':
-                layers.append(nn.ReLU(inplace=True))
-            elif config['act'] == 'lrelu':
-                layers.append(nn.LeakyReLU(negative_slope=0.01, inplace=True))
-            elif config['act'] == 'elu':
-                layers.append(nn.ELU(alpha=1.0, inplace=True))
+        out += skip_connection
+        out = self.residual(out)
 
-        return nn.Sequential(*layers)
+        return out
 
-    def _flatten(self):
-        return nn.Sequential(nn.Flatten())
 
-    def _avgpool(self):
-        return nn.Sequential(nn.AdaptiveAvgPool2d(output_size=(1, 1)))
+class ConvolutionalAutoencoder(nn.Module):
+    def __init__(self):
+        super(ConvolutionalAutoencoder, self).__init__()
 
-    def _reshape(self, config: dict):
-        return nn.Sequential(nn.Unflatten(dim=1, unflattened_size=config['out']))
+        # Encoder
+        self.enc1 = EncoderBlock(3, 16)
+        self.enc2 = EncoderBlock(16, 32)
+        self.enc3 = EncoderBlock(32, 64)
+        self.enc4 = EncoderBlock(64, 128)
+        self.enc5 = EncoderBlock(128, 256)
+        self.enc6 = EncoderBlock(256, 512)
+        self.enc7 = EncoderBlock(512, 1024)
 
-    def _mpool(self):
-        return nn.Sequential(nn.MaxPool2d(kernel_size=(2, 2)))
+        # Decoder
+        self.dec7 = DecoderBlock(1024, 512)
+        self.dec6 = DecoderBlock(512, 256)
+        self.dec5 = DecoderBlock(256, 128)
+        self.dec4 = DecoderBlock(128, 64)
+        self.dec3 = DecoderBlock(64, 32)
+        self.dec2 = DecoderBlock(32, 16)
+        self.dec1 = nn.ConvTranspose2d(16, 3, kernel_size=3, stride=2, padding=1,
+                                       output_padding=1)
 
-    def _upsample(self):
-        return nn.Sequential(nn.Upsample(scale_factor=2, mode='bilinear'))
+    def forward(self, x):
+        # Encoder
+        e1 = self.enc1(x)
+        e2 = self.enc2(e1)
+        e3 = self.enc3(e2)
+        e4 = self.enc4(e3)
+        e5 = self.enc5(e4)
+        e6 = self.enc6(e5)
+        e7 = self.enc7(e6)
 
-    def _make_encoder(self):
-        encoder_config = self.config['encoder']
-        encoder = nn.ModuleList()
+        # print(e7.size(), e6.size())
 
-        for layer_type, config in encoder_config.items():
-            if 'conv' in layer_type:
-                encoder.append(self._conv_block(config))
-            elif 'linear' in layer_type:
-                encoder.append(self._linear(config))
-            elif 'flatten' in layer_type:
-                encoder.append(self._flatten())
-            elif 'avg_pool2d' in layer_type:
-                encoder.append(self._avgpool())
-            elif 'mpool' in layer_type:
-                encoder.append(self._mpool())
+        # Decoder with skip connections
+        d7 = self.dec7(e7, e6)
+        d6 = self.dec6(d7, e5)
+        d5 = self.dec5(d6, e4)
+        d4 = self.dec4(d5, e3)
+        d3 = self.dec3(d4, e2)
+        d2 = self.dec2(d3, e1)
+        out = self.dec1(d2)
 
-        return encoder
-
-    def _make_decoder(self):
-        decoder_config = self.config['decoder']
-        decoder = nn.ModuleList()
-
-        for layer_type, config in decoder_config.items():
-            if 'linear' in layer_type:
-                decoder.append(self._linear(config))
-            elif 'reshape' in layer_type:
-                decoder.append(self._reshape(config))
-            elif 'deconv' in layer_type:
-                decoder.append(self._deconv_block(config))
-            elif 'conv' in layer_type and 'de' not in layer_type:
-                # CONV layer.
-                decoder.append(self._conv_block(config))
-            elif 'upsample' in layer_type:
-                decoder.append(self._upsample())
-
-        return decoder
-
-    def forward(self, im):
-
-        # Pass through the encoder.
-        for module in self.encoder:
-            im = module(im)
-            # print('enc: ', im.size())
-
-        # Obtain a reference to the bottleneck.
-        x = im
-
-        # Pass through the decoder.
-        for module in self.decoder:
-            im = module(im)
-            # print('dec: ', im.size())
-
-        return x, F.sigmoid(im)
+        return e7, F.sigmoid(out)

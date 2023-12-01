@@ -76,8 +76,11 @@ def load_model(model_dir: str):
         # Don't load model again.
         return
 
-    MODEL = MapperMCMC()
-    MODEL.load_state_dict(torch.load(model_dir, map_location='cpu'))
+    try:
+        MODEL = MapperMCMC()
+        MODEL.load_state_dict(torch.load(model_dir, map_location='cpu'))
+    except Exception as e:
+        print("Error while loading model into global memory!")
 
     print("Model and weights loaded on CPU.")
 
