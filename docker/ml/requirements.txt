@@ -3,7 +3,7 @@ torchvision
 numpy
 pandas 
 matplotlib 
-pillow 
+pillow
 scikit-learn
 pymongo
 python-dotenv
