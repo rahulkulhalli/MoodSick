@@ -1,9 +1,10 @@
+import pyro
+import pyro.distributions as dist
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import pyro
 from pyro.nn import PyroModule, PyroSample
-import pyro.distributions as dist
+
 
 class MappingNetwork(PyroModule):
     def __init__(self, fan_in: int = 1024, fan_out: int = 12, device=None):

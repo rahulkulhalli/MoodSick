@@ -1,8 +1,10 @@
+from pprint import pprint
+
 import torch
 import torch.nn as nn
+
 from models.MapperMCMC import MapperMCMC
 from utils import inference_utils
-from pprint import pprint
 
 
 def enable_dropout_in_eval(_model: nn.Module):
@@ -14,14 +16,13 @@ def enable_dropout_in_eval(_model: nn.Module):
 def run_mcmc_inference(_model: nn.Module, emb: torch.Tensor, num_passes: int = 50):
 
     """
-    output:
-    ['danceability','energy','key','loudness','mode','speechiness','acousticness',
-    'instrumentalness','liveness','valence','tempo','time_signature']
-
-    :param _model:
-    :param emb:
-    :param num_passes:
-    :return:
+    Generates the Spotify parameters by running inference through the MCMC model (with Dropout active).
+    The model will run inference on `emb` for `num_passes` times and report the results. For each
+    parameter, we have min_, max_, and target_.
+    :param _model: MCMC model.
+    :param emb: Aggregated embedding vector.
+    :param num_passes: Number of passes through the MCMC model (default: 100)
+    :return: The required JSON response.
     """
 
     _model.eval()
@@ -40,6 +41,7 @@ def run_mcmc_inference(_model: nn.Module, emb: torch.Tensor, num_passes: int = 5
 
     return_dict = dict()
 
+    # Keep this order fixed!
     for attr_ix, attr in enumerate([
         'danceability', 'energy', 'key', 'loudness', 'mode', 'speechiness', 'acousticness',
         'instrumentalness', 'liveness', 'valence', 'tempo', 'time_signature'

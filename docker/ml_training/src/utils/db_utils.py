@@ -1,10 +1,10 @@
+import os
+from typing import List
+
 import numpy as np
+from dotenv import load_dotenv
 from pymongo import MongoClient
 from pymongo.database import Collection
-import torch
-import os
-from dotenv import load_dotenv
-from typing import List
 
 
 def get_collection_instance(db_name: str, collection_name: str) -> Collection:

@@ -1,18 +1,14 @@
-import os
+import argparse
+
+import numpy as np
 import torch
+import torch.nn as nn
+import torch.optim as optim
 
-from dotenv import load_dotenv
-from pymongo import MongoClient
-
-from utils.db_utils import download_embeddings
+from models.MapperMCMC import MapperMCMC
+from utils import model_utils, db_utils
 from utils.preprocessor import DatasetType
 from utils.spotify_preprocessor import SpotifyPreprocessor
-from utils import model_utils
-from models.MapperMCMC import MapperMCMC
-
-import torch.optim as optim
-import torch.nn as nn
-import numpy as np
 
 
 def enable_dropout_in_eval(_model: nn.Module):
@@ -26,6 +22,8 @@ def train(_epoch, _model, dataloader, _device, _opt, _criterion):
     _model.train()
 
     print_steps = len(dataloader) // 5
+    if not print_steps:
+        print_steps = 1
 
     losses = []
     for ix, (x, y) in enumerate(dataloader):
@@ -90,48 +88,55 @@ def test(_epoch, _model, _loader, _device, _criterion, num_passes=5):
     return losses
 
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        'name', type=str, help="Model name", metavar="NAME"
+    )
+    parser.add_argument(
+        '--batch-size', type=int, default=128, help="Batch size to use for train and test loaders"
+    )
+    parser.add_argument(
+        '--n-epochs', type=int, default=250, help="Number of epochs to train for"
+    )
+    parser.add_argument(
+        '--init-lr', type=float, default=1e-3, help="Initial learning rate"
+    )
+    parser.add_argument(
+        '--n-inference-passes', type=int, default=10, help="Number of inference passes"
+    )
+
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
+
+    args = parse_args()
 
     # resolve device.
     device = torch.device('mps') if torch.backends.mps.is_available() else 'cpu'
     # device = 'cpu'
 
-    load_dotenv()
-
-    user = os.getenv('MOODSICK_USER')
-    password = os.getenv('MOODSICK_PASS')
-    uri = os.getenv('ATLAS_URI')
-
-    if user is None or password is None or uri is None:
-        raise EnvironmentError(
-            "Username and/or password and/or URI not found in environment."
-        )
-
-    client = MongoClient(
-        f'mongodb+srv://{user}:{password}@{uri}/?retryWrites=true&w=majority'
-    )
-
-    collection = client.embeddings_db.spec_embeddings
+    collection = db_utils.get_collection_instance('embeddings_db', 'spec_embeddings')
 
     # Get embeddings.
-    embeddings = download_embeddings(collection)
+    embeddings = db_utils.download_embeddings(collection)
 
     # Get preprocessor.
     preprocessor = SpotifyPreprocessor(embeddings, '../data')
-    train_loader = preprocessor.get_dataloader(DatasetType.TRAIN, batch_size=128)
-    test_loader = preprocessor.get_dataloader(DatasetType.TEST, batch_size=64)
+    train_loader = preprocessor.get_dataloader(DatasetType.TRAIN, batch_size=args.batch_size)
+    test_loader = preprocessor.get_dataloader(DatasetType.TEST, batch_size=args.batch_size)
 
     model = MapperMCMC()
     print("#Parameters: ", sum(p.numel() for p in model.parameters()))
     model_utils.weights_init(model)
     model.to(device)
 
-    opt = optim.Adam(model.parameters(), lr=2e-3)
+    opt = optim.Adam(model.parameters(), lr=args.init_lr)
     criterion = nn.MSELoss()
 
-    epochs = 250
     loss_dict = dict()
-    for epoch in range(epochs):
+    for epoch in range(args.n_epochs):
 
         loss_dict[epoch] = {}
 
@@ -140,16 +145,17 @@ if __name__ == "__main__":
 
         print(50*'+')
 
-        te_epoch_losses = test(epoch, model, test_loader, device, criterion, num_passes=10)
+        te_epoch_losses = test(epoch, model, test_loader, device, criterion, num_passes=args.n_inference_passes)
         loss_dict[epoch][DatasetType.TEST] = te_epoch_losses
 
         print(50 * '+')
 
-        if epoch and epoch % 50 == 0:
-            print("Bumping down LR by 5%")
-            opt.param_groups[0]['lr'] *= 0.95
+        if epoch and epoch % 50 == 0 and epoch < 300:
+            print("Bumping down LR by 15%")
+            opt.param_groups[0]['lr'] *= 0.85
+            print("New LR: ", opt.param_groups[0]['lr'])
 
     # Plot losses.
     model_utils.plot_losses(loss_dict)
 
-    model_utils.save_model(model, "./models/mcmc.pt")
+    model_utils.save_model(model, f"./models/{args.name}.pt")

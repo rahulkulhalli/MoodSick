@@ -1,19 +1,17 @@
 import argparse
 import os
-
 from pathlib import Path
+from uuid import uuid4
 
 import numpy as np
 import pymongo
-from uuid import uuid4
-from dotenv import load_dotenv
-
 import torch
 import torch.nn.functional as F
+from dotenv import load_dotenv
+from tqdm import tqdm
 
 from models.static_autoencoder import ConvolutionalAutoencoder
 from utils import model_utils
-from tqdm import tqdm
 from utils.preprocessor import DatasetType
 from utils.preprocessor import Preprocessor
 

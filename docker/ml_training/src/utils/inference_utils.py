@@ -1,7 +1,9 @@
-import torch
-from .db_utils import download_embeddings, get_collection_instance
-from typing import List
 import re
+from typing import List
+
+import torch
+
+from .db_utils import download_embeddings, get_collection_instance
 
 
 def compute_aggregate_embedding(request: List[dict]):
