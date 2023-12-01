@@ -1,39 +1,51 @@
-from pprint import pprint
+import argparse
+from typing import List
 
 import torch
-import torch.nn as nn
 
 from models.MapperMCMC import MapperMCMC
 from utils import inference_utils
 
+# Model is defined as a global variable to ensure that we only load it once in memory.
+MODEL = None
 
-def enable_dropout_in_eval(_model: nn.Module):
-    for m in _model.modules():
+
+# noinspection PyUnresolvedReferences
+def enable_dropout_in_eval():
+
+    # Init here because we change the global variable's attributes.
+    global MODEL
+
+    if MODEL is None:
+        raise ValueError("Model is not initialized!")
+
+    for m in MODEL.modules():
         if m.__class__.__name__.lower().startswith('dropout'):
             m.train()
 
 
-def run_mcmc_inference(_model: nn.Module, emb: torch.Tensor, num_passes: int = 50):
+# noinspection PyUnresolvedReferences,PyCallingNonCallable
+def run_mcmc_inference(emb: torch.Tensor, num_passes: int = 50):
 
     """
     Generates the Spotify parameters by running inference through the MCMC model (with Dropout active).
     The model will run inference on `emb` for `num_passes` times and report the results. For each
     parameter, we have min_, max_, and target_.
-    :param _model: MCMC model.
     :param emb: Aggregated embedding vector.
     :param num_passes: Number of passes through the MCMC model (default: 100)
     :return: The required JSON response.
     """
 
-    _model.eval()
-    enable_dropout_in_eval(_model)
+    if MODEL is None:
+        raise ValueError("Model is None!")
 
-    # emb = emb.double()
+    MODEL.eval()
+    enable_dropout_in_eval()
 
     prediction_tensor = list()
 
     for pass_ix in range(num_passes):
-        prediction = _model(emb)
+        prediction = MODEL(emb)
         prediction_tensor.append(prediction.detach())
 
     # Stack the predictions.
@@ -57,15 +69,58 @@ def run_mcmc_inference(_model: nn.Module, emb: torch.Tensor, num_passes: int = 5
     return {'params': return_dict}
 
 
+def load_model(model_dir: str):
+    global MODEL
+
+    if MODEL is not None:
+        # Don't load model again.
+        return
+
+    MODEL = MapperMCMC()
+    MODEL.load_state_dict(torch.load(model_dir, map_location='cpu'))
+
+    print("Model and weights loaded on CPU.")
+
+
+def get_spotify_params(request: List[dict], n_inference_iters: int = 50):
+
+    # Sample request:
+    # sample = [
+    #     {'query': 'blues00016', 'rating': '4'},
+    #     {'query': 'rock00069', 'rating': 1.0},
+    #     {'query': 'jazz00009', 'rating': 5},
+    #     {'query': 'pop00001', 'rating': '3'},
+    #     {'query': 'classical00091', 'rating': 4}
+    # ]
+
+    # Add a dummy batch dim.
+    aggregate_embedding = inference_utils.compute_aggregate_embedding(request).unsqueeze(0)
+    response = run_mcmc_inference(aggregate_embedding, num_passes=n_inference_iters)
+
+    print("Generated response for request.")
+
+    return response
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        'model_weights', metavar='model-weights', type=str, help="Path to model weights"
+    )
+
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
 
-    weights_dir = './models/mcmc.pt'
-    model = MapperMCMC()
-    model.load_state_dict(torch.load(weights_dir, map_location='cpu'))
+    args = parse_args()
 
-    print("Model and weights loaded on CPU")
+    # Load the model into global memory.
+    load_model(args.model_weights)
 
-    sample = [
+    # sample invocation from here. Actual endpoint will be invoked by Flask.
+    # TODO: Comment this when the API endpoint is created.
+    sample_request = [
         {'query': 'blues00016', 'rating': '4'},
         {'query': 'rock00069', 'rating': 1.0},
         {'query': 'jazz00009', 'rating': 5},
@@ -73,9 +128,4 @@ if __name__ == "__main__":
         {'query': 'classical00091', 'rating': 4}
     ]
 
-    # Add a dummy batch dim.
-    aggregate_embedding = inference_utils.compute_aggregate_embedding(sample).unsqueeze(0)
-    response = run_mcmc_inference(model, aggregate_embedding)
-
-    pprint(response)
-
+    print(get_spotify_params(sample_request))
