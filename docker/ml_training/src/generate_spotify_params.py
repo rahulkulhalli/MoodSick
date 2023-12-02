@@ -3,7 +3,7 @@ from typing import List
 from utils import inference_utils
 
 import torch
-
+import os
 from models.MapperMCMC import MapperMCMC
 from utils import inference_utils
 
@@ -18,7 +18,6 @@ def enable_dropout_in_eval():
     global MODEL
 
     if MODEL is None:
-        load_model('./models/mcmc.pt')
         raise ValueError("Model is not initialized!")
 
     for m in MODEL.modules():
@@ -72,10 +71,12 @@ def run_mcmc_inference(emb: torch.Tensor, num_passes: int = 50):
 
 
 def load_model(model_dir: str):
+
     global MODEL
 
     if MODEL is not None:
         # Don't load model again.
+        print("Model already loaded!")
         return
 
     try:
@@ -116,21 +117,22 @@ def parse_args():
     return parser.parse_args()
 
 
-# if __name__ == "__main__":
+if __name__ == "__main__":
 
-#     args = parse_args()
+    # args = parse_args()
 
-#     # Load the model into global memory.
-#     load_model(args.model_weights)
+    # Load the model into global memory.
+    # load_model(args.model_weights)
+    load_model('./models/mcmc.pt')
 
-#     # sample invocation from here. Actual endpoint will be invoked by Flask.
-#     # TODO: Comment this when the API endpoint is created.
-#     sample_request = [
-#         {'query': 'blues00016', 'rating': '4'},
-#         {'query': 'rock00069', 'rating': 1.0},
-#         {'query': 'jazz00009', 'rating': 5},
-#         {'query': 'pop00001', 'rating': '3'},
-#         {'query': 'classical00091', 'rating': 4}
-#     ]
+    # sample invocation from here. Actual endpoint will be invoked by Flask.
+    # TODO: Comment this when the API endpoint is created.
+    sample_request = [
+        {'query': 'blues00016', 'rating': '4'},
+        {'query': 'rock00069', 'rating': 1.0},
+        {'query': 'jazz00009', 'rating': 5},
+        {'query': 'pop00001', 'rating': '3'},
+        {'query': 'classical00091', 'rating': 4}
+    ]
 
-#     print(get_spotify_params(sample_request))
+    print(get_spotify_params(sample_request))
