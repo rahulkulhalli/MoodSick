@@ -115,7 +115,7 @@ def parse_args():
 
 
 if __name__ == "__main__":
- 
+
     args = parse_args()
 
     # Load the model into global memory.
