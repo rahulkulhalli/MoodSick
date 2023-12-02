@@ -29,6 +29,8 @@ services:
       context: ./ml
       dockerfile: Dockerfile
     tty: true
+    volumes:
+      - ./ml/app:/ml_model/src/app
     env_file:
       - ./ml/.env
     ports:
