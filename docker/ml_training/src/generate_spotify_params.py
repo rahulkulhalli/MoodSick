@@ -108,7 +108,7 @@ def get_spotify_params(request: List[dict], n_inference_iters: int = 50):
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        'model_weights', metavar='model-weights', type=str, help="Path to model weights"
+        '--model_weights', metavar='model-weights', type=str, default="./models/mcmc.pt", help="Path to model weights"
     )
 
     return parser.parse_args()

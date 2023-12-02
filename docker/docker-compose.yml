@@ -9,3 +9,5 @@ services:
     tty: true
     volumes:
       - ./ml_training:/ml_training
+    env_file:
+      - ./ml_training/.env
