@@ -2,6 +2,8 @@ from typing import List, Union
 from generate_spotify_params import get_spotify_params, load_model
 from fastapi import Depends, FastAPI
 from pydantic import BaseModel
+import os
+
 
 app = FastAPI()
 
@@ -25,3 +27,6 @@ async def spotify(request: List[SpotifyParams]):
     res= get_spotify_params(input)
     return {"message": res}
 
+@app.on_event("startup")
+async def startup_event():
+    load_model("./models/mcmc.pt")
