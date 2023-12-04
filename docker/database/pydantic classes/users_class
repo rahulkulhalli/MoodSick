@@ -1,0 +1,74 @@
+from typing import List, Optional
+from pydantic import BaseModel, Field
+from datetime import datetime
+
+class UserInputDetails(BaseModel):
+    timestamp : datetime
+
+class new_users(BaseModel):
+    user_id : object
+    firstname : str
+    lastname : str
+    age : int
+    username : str
+    password : str
+    # login_history : List[] = Field(default_factory=list)
+
+class users(BaseModel):
+    user_id : object
+    firstname : str
+    lastname : str
+    age : int
+    username : str
+    password : str
+    login_history : List[UserInputDetails] = Field(default_factory=list)
+    def add_login_history(self, login_time: datetime):
+        login_event = login_history(login_time=login_time)
+        self.login_history.append(login_event)
+
+class songs(BaseModel):
+    song_id : object
+    filename : str
+    global_rating : float
+    genres : str
+
+class UserRatings(BaseModel):
+    rating_id : object
+    user_id : object
+    ratings : object
+
+class config:
+    arbitrary_types_allowed = True
+
+
+user_data = {
+"user_id" : "6ffdd8jahu7",
+"firstname" : "ayush",
+"lastname" : "saxena",
+"age" : 28,
+"username" : "ayushLP",
+"password" : "ayush@2511",
+"login_history" : []}
+
+#creating my instance to check outputs
+user_instance = users(**user_data)
+
+#adding a login history entry
+current_time = datetime.now()
+# user_instance.login_history(login_time = current_time)
+
+#printing desired outputs now
+print(user_instance.user_id)
+print(user_instance.firstname)
+print(user_instance.lastname)
+print(user_instance.age)
+print(user_instance.username)
+print(user_instance.password)
+print(user_instance.login_history)
+
+
+
+
+
+
+
