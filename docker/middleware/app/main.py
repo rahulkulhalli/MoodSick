@@ -1,6 +1,6 @@
 from typing import List
 from fastapi import FastAPI
-from .routers import users, spotify_communication
+from .routers import users, spotify_communication, admin
 from dotenv import load_dotenv
 
 
@@ -11,6 +11,9 @@ app.include_router(users.router,
 
 app.include_router(spotify_communication.router,
                    prefix="/spotify")
+
+app.include_router(admin.router,
+                   prefix="/admin")
 
 @app.get("/")
 async def root():
