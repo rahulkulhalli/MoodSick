@@ -1,8 +1,8 @@
 import os
-
 import requests
 from fastapi import HTTPException, APIRouter, Request
 from httpx import AsyncClient
+from .import admin
 import base64
 from pydantic import BaseModel
 from enum import Enum
@@ -12,12 +12,13 @@ import urllib.parse
 
 router = APIRouter()
 
-# spotify_user_id = os.getenv("SPOTIFY_USER_ID")
+spotify_user_id = os.getenv("SPOTIFY_USER_ID")
 spotify_client_id = os.getenv("SPOTIFY_CLIENT_ID")
 spotify_client_secret = os.getenv("SPOTIFY_CLIENT_SECRET")
-# authorization_code = os.getenv("SPOTIFY_ACCESS_TOKEN")
-redirect_uri = os.getenv("SPOTIFY_REDIRECT_URI")
+moodsick_authorization_code = os.getenv("SPOTIFY_ACCESS_TOKEN")
+user_redirect_uri = os.getenv("SPOTIFY_USER_REDIRECT_URI")
 scopes = os.getenv("SPOTIFY_SCOPES")
+
 
 
 class SpotifyPlaylist(Enum):
@@ -66,12 +67,12 @@ class ModelParams(BaseModel):
     target_time_signature: int
 
 
-refreshToken = None
-authorization_code = None
+user_refreshToken = None
+user_authorization_code = None
 # This function is used to get the token from spotify
-async def get_spotify_token():
-    global authorization_code
-    global refreshToken
+async def get_user_spotify_token():
+    global user_authorization_code
+    global user_refreshToken
     url = "https://accounts.spotify.com/api/token"
     
     token_headers = {
@@ -80,25 +81,25 @@ async def get_spotify_token():
 
     token_data = {
         "grant_type": "authorization_code",
-        "code": authorization_code,
-        "redirect_uri": redirect_uri
+        "code": user_authorization_code,
+        "redirect_uri": user_redirect_uri
     }
 
     async with AsyncClient() as client:
         token_response = await client.post(url, data=token_data, headers=token_headers)
-        if refreshToken is None and token_response.status_code == 200:
-            refreshToken = token_response.json().get("refresh_token")
+        if user_refreshToken is None and token_response.status_code == 200:
+            user_refreshToken = token_response.json().get("refresh_token")
         
-        print(refreshToken)
+        print("User Refresh:", user_refreshToken)
 
         if token_response.status_code != 200:
-            token = await get_refresh_token(refreshToken)
+            token = await get_user_refresh_token(user_refreshToken)
             return token
         
         token = token_response.json().get("access_token")
         return token
 
-async def get_refresh_token(refreshToken):
+async def get_user_refresh_token(refreshToken):
     url = "https://accounts.spotify.com/api/token"
     token_data = {
         "grant_type": "refresh_token",
@@ -113,12 +114,11 @@ async def get_refresh_token(refreshToken):
             raise HTTPException(status_code=token_response.status_code, detail="Failed to refresh token")
         new_access_token = token_response.json().get("access_token")
         return new_access_token
-    
-@router.get("/read-spotify-profile")
-async def read_spotify_profile():
-    token = await get_spotify_token()
+
+
+async def read_spotify_profile_user(user_token: str):
     url = 'https://api.spotify.com/v1/me'
-    headers = {'Authorization': f"Bearer {token}"}
+    headers = {'Authorization': f"Bearer {user_token}"}
 
     async with AsyncClient() as client:
         response = await client.get(url, headers=headers)
@@ -126,15 +126,16 @@ async def read_spotify_profile():
         if response.status_code != 200:
             raise HTTPException(status_code=response.status_code, detail=response.text)
 
-        return response.json().get("id")
+        return response.json().get("id"), response.json().get("display_name")
 
 # This function is used to get the spotify recommendations based on the parameters passed by the model
 @router.post("/spotify-recommendations")
 async def get_spotify_recommendations(request: ModelParams):
-    token = await get_spotify_token()
+    user_token = await get_user_spotify_token()
+    moodsick_token = await admin.get_moodsick_spotify_token()
     url = 'https://api.spotify.com/v1/recommendations'
     headers = {
-        'Authorization': f"Bearer {token}"  # Replace with your actual token
+        'Authorization': f"Bearer {user_token}"  # Replace with your actual token
     }
     seed_genres = "pop,rock,blues,jazz,classical"
     limit = 5
@@ -170,7 +171,6 @@ async def get_spotify_recommendations(request: ModelParams):
         # 'max_tempo': request.max_tempo,
         'target_tempo': request.target_tempo,
     }
-    print(params)
 
     async with AsyncClient() as client:
         response = await client.get(url, headers=headers, params=params)
@@ -185,34 +185,60 @@ async def get_spotify_recommendations(request: ModelParams):
             del responseJson["tracks"][each]["album"]
             track_uris.append(responseJson["tracks"][each]["uri"])        
 
-        # print(track_uris)
-        personal_playlist_uri = await create_playlist(user_age=19, token=token)
-        #keep the last part from the uri
-        personal_playlist_link = personal_playlist_uri.split(":")[-1]
-        await save_to_playlist(token, track_uris, personal_playlist_link)
+        # Check if the user has a playlist
+        # If the user has a playlist, save the tracks to the playlist
+        # If the user does not have a playlist, create a playlist and save the tracks to the playlist
+        # user_playlist_uri = Get from the database
+        # Create a playlist for the user
+        #user_playlist_uri = await create_playlist(user_token=user_token)
+        #user_playlist_uri = user_playlist_uri.split(":")[-1]
+        user_playlist_uri = "2vsbJJ1WUEp0D9Nwa4wdzH"
+        # Save the tracks to the user playlist
+        await save_to_user_playlist(user_token, track_uris, user_playlist_uri)
+        # Save the tracks to the moodsick playlist according to user's age
+        user_age = 23
+        await save_to_moodsick_playlist(user_age, moodsick_token, track_uris)
+        # return response.json()
         return responseJson
     
-async def save_to_playlist(token, track_uris, personal_playlist_link):
-    # Get current user age from database
-    # age = 19
-
-    # # Get playlist id based on age
-    # if age < 20:
-    #     playlist_id = SpotifyPlaylist.AGE_10_20.value
-    # elif age < 30:
-    #     playlist_id = SpotifyPlaylist.AGE_20_30.value
-    # elif age < 40:
-    #     playlist_id = SpotifyPlaylist.AGE_30_40.value
-    # elif age < 50:
-    #     playlist_id = SpotifyPlaylist.AGE_40_50.value
-    # else:
-    #     playlist_id = SpotifyPlaylist.AGE_50_60.value
-    
-    # endpoint_url = f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks"
-    endpoint_url_personal = f"https://api.spotify.com/v1/playlists/{personal_playlist_link}/tracks"
+async def save_to_user_playlist(user_token, track_uris, user_playlist_link):
+    endpoint_url_user = f"https://api.spotify.com/v1/playlists/{user_playlist_link}/tracks"
 
     headers = {
-        'Authorization': f"Bearer {token}",
+        'Authorization': f"Bearer {user_token}",
+        'Content-Type': 'application/json'
+    }
+
+    data = {
+        "uris": track_uris,
+        "position": 0
+    }
+
+    async with AsyncClient() as client:
+        # response = await client.post(endpoint_url, headers=headers, json=data)
+        response_personal = await client.post(endpoint_url_user, headers=headers, json=data)
+        if response_personal.status_code != 201:
+            raise HTTPException(status_code=response_personal.status_code, detail=response_personal.text)
+        
+        return response_personal.json()
+    
+async def save_to_moodsick_playlist(age, moodsick_token, track_uris):
+    # Get playlist id based on age
+    if age < 20:
+        playlist_id = SpotifyPlaylist.AGE_10_20.value
+    elif age < 30:
+        playlist_id = SpotifyPlaylist.AGE_20_30.value
+    elif age < 40:
+        playlist_id = SpotifyPlaylist.AGE_30_40.value
+    elif age < 50:
+        playlist_id = SpotifyPlaylist.AGE_40_50.value
+    else:
+        playlist_id = SpotifyPlaylist.AGE_50_60.value
+    
+    endpoint_url_mooksick = f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks"
+
+    headers = {
+        'Authorization': f"Bearer {moodsick_token}",
         'Content-Type': 'application/json'
     }
 
@@ -221,62 +247,49 @@ async def save_to_playlist(token, track_uris, personal_playlist_link):
     }
 
     async with AsyncClient() as client:
-        # response = await client.post(endpoint_url, headers=headers, json=data)
-        response_personal = await client.post(endpoint_url_personal, headers=headers, json=data)
-        if response_personal.status_code != 201:
-            raise HTTPException(status_code=response_personal.status_code, detail=response_personal.text)
+        response_moodsick = await client.post(endpoint_url_mooksick, headers=headers, json=data)
+        if response_moodsick.status_code != 201:
+            raise HTTPException(status_code=response_moodsick.status_code, detail=response_moodsick.text)
         
-        return response_personal.json()
+        return response_moodsick.json()
+    
+
 
 @router.get("/create-playlist")
-async def create_playlist(user_age: int, token: str):
-    user_id = await read_spotify_profile()
-    print(user_id)
-    endpoint_url = f"https://api.spotify.com/v1/users/{user_id}/playlists"
-    if user_age < 20:
-        name = "MoodSick Playlist for Age Group 10-20"
-        description = "Playlist for Age Group 10-20 generated by MoodSick"
-    elif user_age < 30:
-        name = "MoodSick Playlist for Age Group 20-30"
-        description = "Playlist for Age Group 20-30 generated by MoodSick"
-    elif user_age < 40:
-        name = "MoodSick Playlist for Age Group 30-40"
-        description = "Playlist for Age Group 30-40 generated by MoodSick"
-    elif user_age < 50:
-        name = "MoodSick Playlist for Age Group 40-50"
-        description = "Playlist for Age Group 40-50 generated by MoodSick"
-    else:
-        name = "MoodSick Playlist for Age Group 50-60"
-        description = "Playlist for Age Group 50-60 generated by MoodSick"
-    
+async def create_playlist(user_token: str):
+    spotify_user_id, spotify_user_name = await read_spotify_profile_user(user_token)
+    print(spotify_user_id, spotify_user_name)
+    endpoint_url_user = f"https://api.spotify.com/v1/users/{spotify_user_id}/playlists"
+    user_playlist_name = "MoodSick Playlist for " + spotify_user_name + "!"
+    user_description = "Playlist generated by MoodSick"
+
     request_body = json.dumps({
-        "name": name,
-        "description": description,
+        "name": user_playlist_name,
+        "description": user_description,
         "public": False # let's keep it between us - for now
     })
-    response = requests.post(url = endpoint_url, data = request_body, headers={"Content-Type":"application/json", "Authorization": f"Bearer {token}"})
-    print(response.json().get("uri"))
+    response = requests.post(url = endpoint_url_user, data = request_body, headers={"Content-Type":"application/json", "Authorization": f"Bearer {user_token}"})
+    print(response.json())
     return response.json().get("uri")
 
-@router.get("/auth-url")
+@router.get("/user-auth-url")
 def create_auth_url():
     base_url = "https://accounts.spotify.com/authorize"
     params = {
         "client_id": spotify_client_id,
         "response_type": "code",
-        "redirect_uri": 'http://localhost:8080/spotify/callback',
+        "redirect_uri": user_redirect_uri,
         "scope": "playlist-modify-public playlist-modify-private playlist-read-private playlist-read-collaborative user-read-private"
     }
-    url = f"{base_url}?{urllib.parse.urlencode(params)}"
-    return url
+    get_token_url = f"{base_url}?{urllib.parse.urlencode(params)}"
+    return get_token_url
 
-    
 @router.get("/callback")
 async def callback(request: Request):
     code = request.query_params.get('code')
     print(request.query_params)
     # Now you can use this code to get the access token
-    global authorization_code
-    authorization_code = code
-    return {"message": "success"}
+    global user_authorization_code
+    user_authorization_code = code
+    return {"message": "User Authorization Successful"}
     
