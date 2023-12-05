@@ -4,16 +4,13 @@ from httpx import AsyncClient
 import base64
 from pydantic import BaseModel
 import urllib.parse
+from ..main import spotify_user_id, spotify_client_id, spotify_client_secret
 # import pymongo
 
 router = APIRouter()
 
-spotify_client_id = os.getenv("SPOTIFY_CLIENT_ID")
-spotify_client_secret = os.getenv("SPOTIFY_CLIENT_SECRET")
 # db_client = pymongo.MongoClient("mongodb://localhost:27017/")
 # db_name = db_client["your_database_name"]
-
-
 
 @router.get("/all", tags=["users"])
 async def read_users():

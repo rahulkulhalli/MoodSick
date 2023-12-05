@@ -6,19 +6,14 @@ from .import admin, users
 import base64
 from pydantic import BaseModel
 from enum import Enum
-import json
 import numpy as np
-import urllib.parse
+from .models.spotify_communication import SpotifyPlaylist, ModelParams, SongFeature, UserPlaylistData, UserAudioPreferance
+from .models.users import UserPlaylistData, UserAudioPreferance
 
 
 router = APIRouter()
 
-spotify_user_id = os.getenv("SPOTIFY_USER_ID")
-spotify_client_id = os.getenv("SPOTIFY_CLIENT_ID")
-spotify_client_secret = os.getenv("SPOTIFY_CLIENT_SECRET")
-moodsick_authorization_code = os.getenv("SPOTIFY_ACCESS_TOKEN")
-user_redirect_uri = os.getenv("SPOTIFY_USER_REDIRECT_URI")
-scopes = os.getenv("SPOTIFY_SCOPES")
+
 
 base_categories = {
     "rock": ["alt-rock", "alternative", "british", "emo", "garage", "grunge", "hard-rock", "indie", "indie-pop", "j-rock", "psych-rock", "punk", "punk-rock", "rock", "rock-n-roll", "rockabilly"],
@@ -32,90 +27,6 @@ base_categories = {
     "pop": ["cantopop", "disney", "j-pop", "k-pop", "latin", "latino", "mandopop", "pop", "pop-film", "power-pop", "synth-pop"],
     "disco": ["disco"]
 }
-
-class UserPlaylistData(BaseModel):
-    uri : str
-    name : str
-    total_songs : str
-    track_uri : list
-
-class UserAudioPreferance(BaseModel):
-    avg_acousticness: float
-    avg_danceability: float
-    avg_energy: float
-    avg_instrumentalness: float
-    avg_key: int
-    avg_liveness: float
-    avg_loudness:  float
-    avg_mode: int
-    avg_speechiness: float
-    avg_tempo: float
-    avg_time_signature: int
-    avg_valence: float
-
-class SongFeature(BaseModel):
-    uri: str
-    acousticness: float
-    danceability: float
-    duration_ms: float
-    energy: float
-    instrumentalness: float
-    key: int
-    liveness: float
-    loudness:  float
-    mode: int
-    speechiness: float
-    tempo: float
-    time_signature: int
-    valence: float
-
-class SpotifyPlaylist(Enum):
-    AGE_10_20 = "2fVLPnOhxdWUJgIQNL3bTw"
-    AGE_20_30 = "3cdJfW7OhCw6vl8CUP0Dsj"
-    AGE_30_40 = "3VufVRa2CfR04x50ePLFER"
-    AGE_40_50 = "2lyDBxRyHXRH5t5gHdTXXj"
-    AGE_50_60 = "2Px1aIIcmJhWdYsiQhZePz"
-
-class ModelParams(BaseModel):
-    min_danceability: float
-    max_danceability: float
-    target_danceability: float
-    min_energy: float
-    max_energy: float
-    target_energy: float
-    min_key: int
-    max_key: int
-    target_key: int
-    min_loudness: float
-    max_loudness: float
-    target_loudness: float
-    min_mode: int
-    max_mode: int
-    target_mode: int
-    min_speechiness: float
-    max_speechiness: float
-    target_speechiness: float
-    min_acousticness: float
-    max_acousticness: float
-    target_acousticness: float
-    min_instrumentalness: float
-    max_instrumentalness: float
-    target_instrumentalness: float
-    min_liveness: float
-    max_liveness: float
-    target_liveness: float
-    min_valence: float
-    max_valence: float
-    target_valence: float
-    min_tempo: int
-    max_tempo: int
-    target_tempo: int
-    min_time_signature: int
-    max_time_signature: int
-    target_time_signature: int
-    genre: str
-    sort_by_popularity: bool
-
 
 async def read_spotify_profile_user(user_token: str):
     url = 'https://api.spotify.com/v1/me'
