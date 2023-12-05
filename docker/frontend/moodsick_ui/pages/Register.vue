@@ -53,7 +53,7 @@
                 />
               </div>
 
-              <div class="mb-4">
+              <!-- <div class="mb-4">
                 <label for="gender" class="form-label">Gender</label>
                 <select
                   class="form-select"
@@ -73,7 +73,7 @@
                   <option value="agender">Agender</option>
                   <option value="other">Other</option>
                 </select>
-              </div>
+              </div> -->
               <button type="submit" class="btn btn-primary w-100">
                 Register
               </button>
