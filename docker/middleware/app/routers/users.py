@@ -19,6 +19,10 @@ spotify_client_secret = os.getenv("SPOTIFY_CLIENT_SECRET")
 async def read_users():
     return [{"username": "Test-1"}, {"username": "Test-2"}]
 
+@router.post("/login", tags=["users"])
+async def login():
+    return None
+    
 user_refreshToken = None
 user_authorization_code = None
 # This function is used to get the token from spotify
