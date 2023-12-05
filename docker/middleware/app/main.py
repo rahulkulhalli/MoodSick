@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 
 app = FastAPI()
 
+
 app.include_router(users.router,
                    prefix="/user")
 

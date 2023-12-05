@@ -2,23 +2,19 @@ import os
 import requests
 from fastapi import HTTPException, APIRouter, Request
 from httpx import AsyncClient
-from .import admin, users
+from .import users, admin
 import base64
 from pydantic import BaseModel
 from enum import Enum
-import json
 import numpy as np
-import urllib.parse
+from app.models.spotify_communication import SpotifyPlaylist, ModelParams, SongFeature
+from app.models.users import UserPlaylistData, UserAudioPreferance
+from app.db_communcation.spotify_communications import save_track_audio_preferances
 
 
 router = APIRouter()
 
-spotify_user_id = os.getenv("SPOTIFY_USER_ID")
-spotify_client_id = os.getenv("SPOTIFY_CLIENT_ID")
-spotify_client_secret = os.getenv("SPOTIFY_CLIENT_SECRET")
-moodsick_authorization_code = os.getenv("SPOTIFY_ACCESS_TOKEN")
-user_redirect_uri = os.getenv("SPOTIFY_USER_REDIRECT_URI")
-scopes = os.getenv("SPOTIFY_SCOPES")
+
 
 base_categories = {
     "rock": ["alt-rock", "alternative", "british", "emo", "garage", "grunge", "hard-rock", "indie", "indie-pop", "j-rock", "psych-rock", "punk", "punk-rock", "rock", "rock-n-roll", "rockabilly"],
@@ -32,90 +28,6 @@ base_categories = {
     "pop": ["cantopop", "disney", "j-pop", "k-pop", "latin", "latino", "mandopop", "pop", "pop-film", "power-pop", "synth-pop"],
     "disco": ["disco"]
 }
-
-class UserPlaylistData(BaseModel):
-    uri : str
-    name : str
-    total_songs : str
-    track_uri : list
-
-class UserAudioPreferance(BaseModel):
-    avg_acousticness: float
-    avg_danceability: float
-    avg_energy: float
-    avg_instrumentalness: float
-    avg_key: int
-    avg_liveness: float
-    avg_loudness:  float
-    avg_mode: int
-    avg_speechiness: float
-    avg_tempo: float
-    avg_time_signature: int
-    avg_valence: float
-
-class SongFeature(BaseModel):
-    uri: str
-    acousticness: float
-    danceability: float
-    duration_ms: float
-    energy: float
-    instrumentalness: float
-    key: int
-    liveness: float
-    loudness:  float
-    mode: int
-    speechiness: float
-    tempo: float
-    time_signature: int
-    valence: float
-
-class SpotifyPlaylist(Enum):
-    AGE_10_20 = "2fVLPnOhxdWUJgIQNL3bTw"
-    AGE_20_30 = "3cdJfW7OhCw6vl8CUP0Dsj"
-    AGE_30_40 = "3VufVRa2CfR04x50ePLFER"
-    AGE_40_50 = "2lyDBxRyHXRH5t5gHdTXXj"
-    AGE_50_60 = "2Px1aIIcmJhWdYsiQhZePz"
-
-class ModelParams(BaseModel):
-    min_danceability: float
-    max_danceability: float
-    target_danceability: float
-    min_energy: float
-    max_energy: float
-    target_energy: float
-    min_key: int
-    max_key: int
-    target_key: int
-    min_loudness: float
-    max_loudness: float
-    target_loudness: float
-    min_mode: int
-    max_mode: int
-    target_mode: int
-    min_speechiness: float
-    max_speechiness: float
-    target_speechiness: float
-    min_acousticness: float
-    max_acousticness: float
-    target_acousticness: float
-    min_instrumentalness: float
-    max_instrumentalness: float
-    target_instrumentalness: float
-    min_liveness: float
-    max_liveness: float
-    target_liveness: float
-    min_valence: float
-    max_valence: float
-    target_valence: float
-    min_tempo: int
-    max_tempo: int
-    target_tempo: int
-    min_time_signature: int
-    max_time_signature: int
-    target_time_signature: int
-    genre: str
-    sort_by_popularity: bool
-
 
 async def read_spotify_profile_user(user_token: str):
     url = 'https://api.spotify.com/v1/me'
@@ -258,29 +170,29 @@ async def get_spotify_recommendations(request: ModelParams):
         return responseJson
 
 
-# async def get_track_features(user_token, track_uris):
-#     # Split each uri like this user_playlist_uri.split(":")[-1]
-#     api_track_uri = ",".join([uri.split(":")[-1] for uri in track_uris])
-#     enpoint_url = "https://api.spotify.com/v1/tracks"
-#     headers = {
-#         'Authorization': f"Bearer {user_token}"
-#     }
-#     data = {
-#         "ids" : api_track_uri
-#     }
-#     async with AsyncClient() as client:
-#         track_features = []
-#         response = await client.get(enpoint_url, headers=headers, params=data)
-#         print("Inside Get Track Features")
-#         if response.status_code != 200:
-#             raise HTTPException(status_code=response.status_code, detail=response.text)
+async def get_track_features(user_token, track_uris):
+    # Split each uri like this user_playlist_uri.split(":")[-1]
+    api_track_uri = ",".join([uri.split(":")[-1] for uri in track_uris])
+    enpoint_url = "https://api.spotify.com/v1/tracks"
+    headers = {
+        'Authorization': f"Bearer {user_token}"
+    }
+    data = {
+        "ids" : api_track_uri
+    }
+    async with AsyncClient() as client:
+        track_features = []
+        response = await client.get(enpoint_url, headers=headers, params=data)
+        print("Inside Get Track Features")
+        if response.status_code != 200:
+            raise HTTPException(status_code=response.status_code, detail=response.text)
         
-#         responseJson = response.json()
-#         # for each in range(len(responseJson["tracks"])):
-#         #     print(responseJson["tracks"][each]["artists"][0]["genres"])
-#         #     track_features.append(SongFeature(uri=responseJson["tracks"][each]["uri"], genre=responseJson["tracks"][each]["artists"][0]["genres"], popularity=responseJson["tracks"][each]["popularity"]))
-        
-#         return responseJson
+        responseJson = response.json()
+        for each in range(len(responseJson["tracks"])):
+        #     print(responseJson["tracks"][each]["artists"][0]["genres"])
+            track_features.append(SongFeature(uri=responseJson["tracks"][each]["uri"], genre=responseJson["tracks"][each]["artists"][0]["genres"], popularity=responseJson["tracks"][each]["popularity"]))
+                
+        return responseJson
 
 
 async def save_to_user_playlist(user_token, track_uris, user_playlist_link):
@@ -357,6 +269,31 @@ async def get_playlist_songs(user_token, playlist_uri):
 
         return track_uri
 
+# We will user the user's tracks to get the data. We will get the audio features of the tracks and then use the average of the audio features to get the user's audio features
+async def get_audio_features(user_token, track_uris):
+    endpoint = "https://api.spotify.com/v1/audio-features"
+    headers = {
+        'Authorization': f"Bearer {user_token}"
+    }
+    data = {
+        "ids": ",".join(track_uris)
+    }
+    async with AsyncClient() as client:
+        response = await client.get(endpoint, headers=headers, params=data)
+        if response.status_code != 200:
+            raise HTTPException(status_code=response.status_code, detail=response.text)
+        
+        responseJson = response.json()
+        audio_feature_dict = []
+        for each in range(len(responseJson["audio_features"])):
+            # we will save the uri of the track and the audio features of the track to the database
+            audio_feature_dict.append(SongFeature(uri=responseJson["audio_features"][each]["uri"], acousticness=responseJson["audio_features"][each]["acousticness"], danceability=responseJson["audio_features"][each]["danceability"], duration_ms=responseJson["audio_features"][each]["duration_ms"], energy=responseJson["audio_features"][each]["energy"], instrumentalness=responseJson["audio_features"][each]["instrumentalness"], key=responseJson["audio_features"][each]["key"], liveness=responseJson["audio_features"][each]["liveness"], loudness=responseJson["audio_features"][each]["loudness"], mode=responseJson["audio_features"][each]["mode"], speechiness=responseJson["audio_features"][each]["speechiness"], tempo=responseJson["audio_features"][each]["tempo"], time_signature=responseJson["audio_features"][each]["time_signature"], valence=responseJson["audio_features"][each]["valence"]))
+        
+        # Save the audio features to the database
+        # await save_track_audio_preferances("656ed920a993f0273facf85b", audio_feature_dict)
+        
+        return audio_feature_dict
+
 @router.get("/get-user-audio-preferance")
 async def get_user_audio_preferance(user_token = None):
     # Using user token. So we don't have to worry about api rate limit
@@ -390,6 +327,9 @@ async def get_user_audio_preferance(user_token = None):
         for each in range(len(playlist_track_dict)):
             feature_dict[playlist_track_dict[each].uri] = await get_audio_features(user_token, playlist_track_dict[each].track_uri)
 
+        await save_track_audio_preferances("656ed920a993f0273facf85b", list(feature_dict.values()))
+
+        
         # song_params will save {k,v} where k = audio feature and v = average of the audio feature
         song_params = {}
         for k,v in feature_dict.items():
@@ -413,24 +353,3 @@ async def get_user_audio_preferance(user_token = None):
         song_params = UserAudioPreferance(**song_params)
         return song_params
 
-# We will user the user's tracks to get the data. We will get the audio features of the tracks and then use the average of the audio features to get the user's audio features
-async def get_audio_features(user_token, track_uris):
-    endpoint = "https://api.spotify.com/v1/audio-features"
-    headers = {
-        'Authorization': f"Bearer {user_token}"
-    }
-    data = {
-        "ids": ",".join(track_uris)
-    }
-    async with AsyncClient() as client:
-        response = await client.get(endpoint, headers=headers, params=data)
-        if response.status_code != 200:
-            raise HTTPException(status_code=response.status_code, detail=response.text)
-        
-        responseJson = response.json()
-        audio_feature_dict = []
-        for each in range(len(responseJson["audio_features"])):
-            # we will save the uri of the track and the audio features of the track to the database
-            audio_feature_dict.append(SongFeature(uri=responseJson["audio_features"][each]["uri"], acousticness=responseJson["audio_features"][each]["acousticness"], danceability=responseJson["audio_features"][each]["danceability"], duration_ms=responseJson["audio_features"][each]["duration_ms"], energy=responseJson["audio_features"][each]["energy"], instrumentalness=responseJson["audio_features"][each]["instrumentalness"], key=responseJson["audio_features"][each]["key"], liveness=responseJson["audio_features"][each]["liveness"], loudness=responseJson["audio_features"][each]["loudness"], mode=responseJson["audio_features"][each]["mode"], speechiness=responseJson["audio_features"][each]["speechiness"], tempo=responseJson["audio_features"][each]["tempo"], time_signature=responseJson["audio_features"][each]["time_signature"], valence=responseJson["audio_features"][each]["valence"]))
-        
-        return audio_feature_dict
