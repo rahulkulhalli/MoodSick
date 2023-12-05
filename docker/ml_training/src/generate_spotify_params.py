@@ -1,9 +1,12 @@
 import argparse
 from typing import List
+
+import numpy as np
+
 from utils import inference_utils
 
 import torch
-
+import os
 from models.MapperMCMC import MapperMCMC
 from utils import inference_utils
 
@@ -18,7 +21,6 @@ def enable_dropout_in_eval():
     global MODEL
 
     if MODEL is None:
-        load_model('./models/mcmc.pt')
         raise ValueError("Model is not initialized!")
 
     for m in MODEL.modules():
@@ -55,16 +57,34 @@ def run_mcmc_inference(emb: torch.Tensor, num_passes: int = 50):
 
     return_dict = dict()
 
+    round_to = 3
+
+    cast_dict = {
+        'danceability': (float, 0., 1.),
+        'energy': (float, 0., 1.),
+        'key': (int, 0, 11),
+        'loudness': (float, -10., 10.),
+        'mode': (int, 0, 1),
+        'speechiness': (float, 0., 1.),
+        'acousticness': (float, 0., 1.),
+        'instrumentalness': (float, 0., 1.),
+        'liveness': (float, 0., 1.),
+        'valence': (float, 0., 1.),
+        'tempo': (int, 0, 1000),
+        'time_signature': (int, 1, 11)
+    }
+
     # Keep this order fixed!
     for attr_ix, attr in enumerate([
         'danceability', 'energy', 'key', 'loudness', 'mode', 'speechiness', 'acousticness',
         'instrumentalness', 'liveness', 'valence', 'tempo', 'time_signature'
     ]):
+        cast_fn, floor, ceil = cast_dict[attr]
         return_dict.update(
             {
-                'min_' + attr: stacked[:, attr_ix].min().item(),
-                'max_' + attr: stacked[:, attr_ix].max().item(),
-                'target_' + attr: stacked[:, attr_ix].mean().item()
+                'min_' + attr: round(cast_fn(np.clip(stacked[:, attr_ix].min().item(), floor, ceil)), round_to),
+                'max_' + attr: round(cast_fn(np.clip(stacked[:, attr_ix].max().item(), floor, ceil)), round_to),
+                'target_' + attr: round(cast_fn(np.clip(stacked[:, attr_ix].mean().item(), floor, ceil)), round_to)
             }
         )
 
@@ -72,10 +92,12 @@ def run_mcmc_inference(emb: torch.Tensor, num_passes: int = 50):
 
 
 def load_model(model_dir: str):
+
     global MODEL
 
     if MODEL is not None:
         # Don't load model again.
+        print("Model already loaded!")
         return
 
     try:
@@ -116,21 +138,22 @@ def parse_args():
     return parser.parse_args()
 
 
-# if __name__ == "__main__":
+if __name__ == "__main__":
 
-#     args = parse_args()
+    # args = parse_args()
 
-#     # Load the model into global memory.
-#     load_model(args.model_weights)
+    # Load the model into global memory.
+    # load_model(args.model_weights)
+    load_model('./models/mcmc.pt')
 
-#     # sample invocation from here. Actual endpoint will be invoked by Flask.
-#     # TODO: Comment this when the API endpoint is created.
-#     sample_request = [
-#         {'query': 'blues00016', 'rating': '4'},
-#         {'query': 'rock00069', 'rating': 1.0},
-#         {'query': 'jazz00009', 'rating': 5},
-#         {'query': 'pop00001', 'rating': '3'},
-#         {'query': 'classical00091', 'rating': 4}
-#     ]
+    # sample invocation from here. Actual endpoint will be invoked by Flask.
+    # TODO: Comment this when the API endpoint is created.
+    sample_request = [
+        {'query': 'blues00016', 'rating': '4'},
+        {'query': 'rock00069', 'rating': 1.0},
+        {'query': 'jazz00009', 'rating': 5},
+        {'query': 'pop00001', 'rating': '3'},
+        {'query': 'classical00091', 'rating': 4}
+    ]
 
-#     print(get_spotify_params(sample_request))
+    print(get_spotify_params(sample_request))
