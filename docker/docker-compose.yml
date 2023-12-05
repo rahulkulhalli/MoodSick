@@ -73,7 +73,7 @@ services:
   #   environment:
   #     MONGO_INITDB_ROOT_USERNAME: mongo
   #     MONGO_INITDB_ROOT_PASSWORD: mongo
-  #     MONGO_INITDB_DATABASE: moodSickDB
+  #     MONGO_INITDB_DATABASE: mood_sick_db
 
 networks:
   moodSickNetwork-10.9.0.0:

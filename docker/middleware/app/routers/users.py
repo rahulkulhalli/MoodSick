@@ -7,6 +7,8 @@ import base64
 from pydantic import BaseModel
 import urllib.parse
 import pymongo
+from ..main import spotify_user_id, spotify_client_id, spotify_client_secret
+# import pymongo
 
 router = APIRouter()
 user_refreshToken = None

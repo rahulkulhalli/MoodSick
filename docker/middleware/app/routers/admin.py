@@ -4,14 +4,9 @@ from httpx import AsyncClient
 import base64
 from pydantic import BaseModel
 import urllib.parse
+from ..main import spotify_user_id, spotify_client_id, spotify_client_secret
 
 router = APIRouter()
-
-moodsick_id = os.getenv("SPOTIFY_USER_ID")
-moodsick_client_id = os.getenv("SPOTIFY_CLIENT_ID")
-moodsick_client_secret = os.getenv("SPOTIFY_CLIENT_SECRET")
-admin_redirect_uri = os.getenv("SPOTIFY_ADMIN_REDIRECT_URI")
-scopes = os.getenv("SPOTIFY_SCOPES")
 
 moodsick_refreshToken = None
 moodsick_authorization_code = None
@@ -21,7 +16,7 @@ async def get_moodsick_spotify_token():
     url = "https://accounts.spotify.com/api/token"
     
     token_headers = {
-        "Authorization": f"Basic {base64.b64encode(f'{moodsick_client_id}:{moodsick_client_secret}'.encode()).decode()}"
+        "Authorization": f"Basic {base64.b64encode(f'{spotify_client_id}:{spotify_client_secret}'.encode()).decode()}"
     }
 
     token_data = {
@@ -53,7 +48,7 @@ async def get_moodsick_refresh_token(refreshToken):
         "refresh_token": refreshToken
     }
     token_headers = {
-        "Authorization": f"Basic {base64.b64encode(f'{moodsick_client_id}:{moodsick_client_secret}'.encode()).decode()}"
+        "Authorization": f"Basic {base64.b64encode(f'{spotify_user_id}:{spotify_client_secret}'.encode()).decode()}"
     }
     async with AsyncClient() as client:
         token_response = await client.post(url, data=token_data, headers=token_headers)
@@ -67,7 +62,7 @@ async def get_moodsick_refresh_token(refreshToken):
 def create_auth_url():
     base_url = "https://accounts.spotify.com/authorize"
     params = {
-        "client_id": moodsick_client_id,
+        "client_id": spotify_user_id,
         "response_type": "code",
         "redirect_uri": 'http://localhost:8080/admin/callback',
         "scope": "playlist-modify-public playlist-modify-private playlist-read-private playlist-read-collaborative user-read-private"
