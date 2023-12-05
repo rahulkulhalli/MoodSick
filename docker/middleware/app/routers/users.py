@@ -1,19 +1,19 @@
 import os
+from app.db_communcation.users import create_user
+from app.models.users import UserRegisterData
 from fastapi import HTTPException, APIRouter, Request
 from httpx import AsyncClient
 import base64
 from pydantic import BaseModel
 import urllib.parse
-# import pymongo
+import pymongo
 
 router = APIRouter()
+user_refreshToken = None
+user_authorization_code = None
 
 spotify_client_id = os.getenv("SPOTIFY_CLIENT_ID")
 spotify_client_secret = os.getenv("SPOTIFY_CLIENT_SECRET")
-# db_client = pymongo.MongoClient("mongodb://localhost:27017/")
-# db_name = db_client["your_database_name"]
-
-
 
 @router.get("/all", tags=["users"])
 async def read_users():
@@ -22,9 +22,15 @@ async def read_users():
 @router.post("/login", tags=["users"])
 async def login():
     return None
-    
-user_refreshToken = None
-user_authorization_code = None
+
+@router.post("/register", tags=["users"])
+async def register(user_data: UserRegisterData):
+    await create_user(user_data)
+    return "None"
+
+
+
+
 # This function is used to get the token from spotify
 async def get_user_spotify_token():
     global user_authorization_code
