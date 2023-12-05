@@ -7,12 +7,11 @@ import base64
 from pydantic import BaseModel
 import urllib.parse
 import pymongo
-# from ..main import spotify_user_id, spotify_client_id, spotify_client_secret
+from app import spotify_user_id, spotify_client_id, spotify_client_secret
+from app.db_communcation.users import save_user_refresh_token, get_user_refresh_token, get_user_authorization_code, save_user_authorization_code
 # import pymongo
 
 router = APIRouter()
-user_refreshToken = None
-user_authorization_code = None
 
 # spotify_client_id = os.getenv("SPOTIFY_CLIENT_ID")
 # spotify_client_secret = os.getenv("SPOTIFY_CLIENT_SECRET")
@@ -33,83 +32,90 @@ user_authorization_code = None
 
 
 
-# # This function is used to get the token from spotify
-# async def get_user_spotify_token():
-#     global user_authorization_code
-#     global user_refreshToken
-#     url = "https://accounts.spotify.com/api/token"
+# This function is used to get the token from spotify
+async def get_user_spotify_token():
+    user_id ="656ed920a993f0273facf85b"
+    user_authorization_code = await get_user_authorization_code(user_id)
+    print(user_authorization_code)
+    user_refresh_token = await get_user_refresh_token(user_id)
+    if user_authorization_code is None:
+        raise HTTPException(status_code=401, detail="User not authorized")
     
-#     token_headers = {
-#         "Authorization": f"Basic {base64.b64encode(f'{spotify_client_id}:{spotify_client_secret}'.encode()).decode()}"
-#     }
+    url = "https://accounts.spotify.com/api/token"
 
-#     token_data = {
-#         "grant_type": "authorization_code",
-#         "code": user_authorization_code,
-#         "redirect_uri": "http://localhost:8080/user/callback"
-#     }
+    token_headers = {
+        "Authorization": f"Basic {base64.b64encode(f'{spotify_client_id}:{spotify_client_secret}'.encode()).decode()}"
+    }
 
-#     async with AsyncClient() as client:
-#         token_response = await client.post(url, data=token_data, headers=token_headers)
-#         if user_refreshToken is None and token_response.status_code == 200:
-#             user_refreshToken = token_response.json().get("refresh_token")
+    token_data = {
+        "grant_type": "authorization_code",
+        "code": user_authorization_code,
+        "redirect_uri": "http://localhost:8080/user/callback"
+    }
+
+    async with AsyncClient() as client:
+        token_response = await client.post(url, data=token_data, headers=token_headers)
+        print(token_response.json())
+        if user_refresh_token is None or token_response.status_code == 200:
+            access_token = token_response.json().get("access_token")
+            new_user_refresh_token = token_response.json().get("refresh_token")
+            print(f"Refresh token: {new_user_refresh_token}")
+            await save_user_refresh_token(user_id, new_user_refresh_token)
+            return access_token
         
-#         print("User Refresh:", user_refreshToken)
+        if user_refresh_token:
+            new_access_token = await get_refresh_token(user_refresh_token)
+            return new_access_token
 
-#         if token_response.status_code != 200:
-#             token = await get_user_refresh_token(user_refreshToken)
-#             return token
-        
-#         token = token_response.json().get("access_token")
-#         return token
-
-# async def get_user_refresh_token(refreshToken):
-#     url = "https://accounts.spotify.com/api/token"
-#     token_data = {
-#         "grant_type": "refresh_token",
-#         "refresh_token": refreshToken
-#     }
-#     token_headers = {
-#         "Authorization": f"Basic {base64.b64encode(f'{spotify_client_id}:{spotify_client_secret}'.encode()).decode()}"
-#     }
-#     async with AsyncClient() as client:
-#         token_response = await client.post(url, data=token_data, headers=token_headers)
-#         if token_response.status_code != 200:
-#             raise HTTPException(status_code=token_response.status_code, detail="Failed to refresh token")
-#         new_access_token = token_response.json().get("access_token")
-#         return new_access_token
+        raise HTTPException(status_code=400, detail="Authorization required")
     
 
-# @router.get("/user-auth-url")
-# def create_auth_url():
-#     base_url = "https://accounts.spotify.com/authorize"
-#     params = {
-#         "client_id": spotify_client_id,
-#         "response_type": "code",
-#         "redirect_uri": "http://localhost:8080/user/callback",
-#         "scope": "playlist-modify-public playlist-modify-private playlist-read-private playlist-read-collaborative user-read-private"
-#     }
-#     get_token_url = f"{base_url}?{urllib.parse.urlencode(params)}"
-#     return get_token_url
+async def get_refresh_token(refreshToken):
+    url = "https://accounts.spotify.com/api/token"
+    token_data = {
+        "grant_type": "refresh_token",
+        "refresh_token": refreshToken
+    }
+    token_headers = {
+        "Authorization": f"Basic {base64.b64encode(f'{spotify_client_id}:{spotify_client_secret}'.encode()).decode()}"
+    }
+    async with AsyncClient() as client:
+        token_response = await client.post(url, data=token_data, headers=token_headers)
+        if token_response.status_code != 200:
+            raise HTTPException(status_code=token_response.status_code, detail="Failed to refresh token")
+        new_access_token = token_response.json().get("access_token")
+        return new_access_token
+    
 
-# @router.get("/callback")
-# async def callback(request: Request):
-#     code = request.query_params.get('code')
-#     print(request.query_params)
-#     # Now you can use this code to get the access token
-#     global user_authorization_code
-#     user_authorization_code = code
-#     return {"message": "User Authorization Successful"}
+@router.get("/user-auth-url")
+def create_auth_url():
+    base_url = "https://accounts.spotify.com/authorize"
+    params = {
+        "client_id": spotify_client_id,
+        "response_type": "code",
+        "redirect_uri": "http://localhost:8080/user/callback",
+        "scope": "playlist-modify-public playlist-modify-private playlist-read-private playlist-read-collaborative user-read-private"
+    }
+    get_token_url = f"{base_url}?{urllib.parse.urlencode(params)}"
+    return get_token_url
 
-# # async def save_user_playlist(user_id, user_playlist_uri):
-# #     collection = db_name["your_collection_name"]
+@router.get("/callback")
+async def callback(request: Request):
+    code = request.query_params.get('code')
+    print(request.query_params)
+    # Now you can use this code to get the access token
+    await save_user_authorization_code("656ed920a993f0273facf85b", code)
+    return {"message": "User Authorization Successful"}
 
-# #     # Save the user playlist URI to the database where user_id is the key
-# #     document = {"user_id": user_id, "user_playlist_uri": user_playlist_uri}
-# #     collection.update_one({"user_id": user_id}, {"$set": document}, upsert=True)
+# async def save_user_playlist(user_id, user_playlist_uri):
+#     collection = db_name["your_collection_name"]
+
+#     # Save the user playlist URI to the database where user_id is the key
+#     document = {"user_id": user_id, "user_playlist_uri": user_playlist_uri}
+#     collection.update_one({"user_id": user_id}, {"$set": document}, upsert=True)
 
 
-# # async def get_user_playlist(user_id):
-# #     collection = db_name["your_collection_name"]
-# #     document = collection.find_one({"user_id": user_id})
-# #     return document["user_playlist_uri"]
+# async def get_user_playlist(user_id):
+#     collection = db_name["your_collection_name"]
+#     document = collection.find_one({"user_id": user_id})
+#     return document["user_playlist_uri"]
