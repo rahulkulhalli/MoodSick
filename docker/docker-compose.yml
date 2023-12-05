@@ -17,22 +17,22 @@ services:
   #    moodSickNetwork-10.9.0.0:
   #       ipv4_address: 10.9.0.7
 
-  ml_training:
-    platform: linux/arm64/v8
-    build:
-      context: ./ml_training
-      dockerfile: Dockerfile
-    image: ml_training
-    tty: true
-    ports:
-      - 5000:80
-    volumes:
-      - ./ml_training:/ml_model
-    env_file:
-      - ./ml/.env
-    networks:
-      moodSickNetwork-10.9.0.0:
-        ipv4_address: 10.9.0.8
+  # ml_training:
+  #   platform: linux/arm64/v8
+  #   build:
+  #     context: ./ml_training
+  #     dockerfile: Dockerfile
+  #   image: ml_training
+  #   tty: true
+  #   ports:
+  #     - 5000:80
+  #   volumes:
+  #     - ./ml_training:/ml_model
+  #   env_file:
+  #     - ./ml/.env
+  #   networks:
+  #     moodSickNetwork-10.9.0.0:
+  #       ipv4_address: 10.9.0.8
 
   # frontend:
   #   build:
@@ -61,19 +61,21 @@ services:
         ipv4_address: 10.9.0.6
 
 
-  # mongodb:
-  #   platform: linux/arm64/v8
-  #   image: mongo:7.0.4-rc0
-  #   ports:
-  #     - "27017:27017"
-  #   tty: true
-  #   networks:
-  #     moodSickNetwork-10.9.0.0:
-  #       ipv4_address: 10.9.0.9
-  #   environment:
-  #     MONGO_INITDB_ROOT_USERNAME: mongo
-  #     MONGO_INITDB_ROOT_PASSWORD: mongo
-  #     MONGO_INITDB_DATABASE: mood_sick_db
+  mongodb:
+    platform: linux/arm64/v8
+    image: mongo:7.0.4-rc0
+    ports:
+      - "27018:27017"
+    tty: true
+    volumes:
+      - ./mongo:/data/db
+    networks:
+      moodSickNetwork-10.9.0.0:
+        ipv4_address: 10.9.0.9
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mongo
+      MONGO_INITDB_ROOT_PASSWORD: mongo
+      MONGO_INITDB_DATABASE: moodSickDB
 
 networks:
   moodSickNetwork-10.9.0.0:

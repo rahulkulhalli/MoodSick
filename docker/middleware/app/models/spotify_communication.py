@@ -1,3 +1,6 @@
+from pydantic import BaseModel
+from enum import Enum
+
 class SpotifyPlaylist(Enum):
     AGE_10_20 = "2fVLPnOhxdWUJgIQNL3bTw"
     AGE_20_30 = "3cdJfW7OhCw6vl8CUP0Dsj"

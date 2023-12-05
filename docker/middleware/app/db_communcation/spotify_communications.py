@@ -1,5 +1,5 @@
-# from app.models.spotify_communications import SpotifyPlaylist, ModelParams, SongFeature
-# from . import db_name as collection
+from app.models.spotify_communications import SpotifyPlaylist, ModelParams, SongFeature
+from . import db_name as collection
 
 
 async def save_track_audio_preferances():
