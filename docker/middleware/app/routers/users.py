@@ -11,7 +11,7 @@ from pydantic import BaseModel
 import urllib.parse
 import pymongo
 from app import spotify_user_id, spotify_client_id, spotify_client_secret
-from app.db_communcation.users import save_user_refresh_token, get_user_refresh_token, get_user_authorization_code, save_user_authorization_code
+from app.db_communcation.users import save_user_refresh_token, get_user_refresh_token, get_user_authorization_code, save_user_authorization_code, get_songs_for_user
 from app.routers.spotify_communication import get_spotify_and_user_preferences
 # import pymongo
 import requests
@@ -41,22 +41,21 @@ async def save_user_mood_genres(user_moods: UserPreferences):
     result = await save_user_mood_maping(user_moods)
     return {"Status": result}
 
-@router.post("/get-songs", tags=["Users"])
-async def get():
-    some_file_path1 = "/code/app/static_songs/blues.00004.wav"
-    some_file_path2 = "/code/app/static_songs/blues.00004.wav"
-    some_file_path3 = "/code/app/static_songs/blues.00004.wav"
-    some_file_path4 = "/code/app/static_songs/blues.00004.wav"
-    some_file_path5 = "/code/app/static_songs/blues.00004.wav"
-    response_data = [
-        FileResponse(some_file_path1),
-        FileResponse(some_file_path2),
-        FileResponse(some_file_path3),
-        FileResponse(some_file_path4),
-        FileResponse(some_file_path5),
-    ]
+# {moods: "happy"}
+@router.get("/get-songs", tags=["Users"])
+async def get(response: Request):
+    response = await response.json()
+    mood = response.get("mood")
+    user_id = response.get("user_id")
+    request_data_dict = {
+        "user_id": user_id,
+        "mood": mood
+    }
+    response_data = await get_songs_for_user(request_data_dict)
 
-    return  response_data
+    response_data = [(f"http://10.9.0.6/static/{song.get('songs').get('filename')}") for song in response_data]
+
+    return response_data
 
 @router.post("/get-recommendations-for-user", tags=["Users"])
 async def get_recommendations_for_user(request: Request):

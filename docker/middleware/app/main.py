@@ -5,7 +5,7 @@ from .routers import users, spotify_communication, admin
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-
+import os
 
 app = FastAPI()
 origins = [
