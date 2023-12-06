@@ -1,7 +1,8 @@
 import os
-# from app.db_communcation.users import create_user
-# from app.models.users import UserRegisterData
+from app.db_communcation.users import create_user, login_user, save_user_mood_maping
+from app.models.users import UserData, UserPreferences
 from fastapi import HTTPException, APIRouter, Request
+from fastapi.responses import FileResponse
 from httpx import AsyncClient
 import base64
 from pydantic import BaseModel
@@ -21,15 +22,37 @@ user_authorization_code = None
 # async def read_users():
 #     return [{"username": "Test-1"}, {"username": "Test-2"}]
 
-# @router.post("/login", tags=["users"])
-# async def login():
-#     return None
+@router.post("/login", tags=["users"])
+async def login(creds: UserData):
+    result = await login_user(creds)
+    return result
 
-# @router.post("/register", tags=["users"])
-# async def register(user_data: UserRegisterData):
-#     await create_user(user_data)
-#     return "None"
+@router.post("/register", tags=["users"])
+async def register(user_data: UserData):
+    result = await create_user(user_data)
+    return {"Status": result}
 
+@router.post("/save-user-mood-genres", tags=["Users"])
+async def save_user_mood_genres(user_moods: UserPreferences):
+    result = await save_user_mood_maping(user_moods)
+    return {"Status": result}
+
+@router.post("/get-songs", tags=["Users"])
+async def get():
+    some_file_path1 = "/code/app/static_songs/blues.00004.wav"
+    some_file_path2 = "/code/app/static_songs/blues.00004.wav"
+    some_file_path3 = "/code/app/static_songs/blues.00004.wav"
+    some_file_path4 = "/code/app/static_songs/blues.00004.wav"
+    some_file_path5 = "/code/app/static_songs/blues.00004.wav"
+    response_data = [
+        FileResponse(some_file_path1),
+        FileResponse(some_file_path2),
+        FileResponse(some_file_path3),
+        FileResponse(some_file_path4),
+        FileResponse(some_file_path5),
+    ]
+
+    return  response_data
 
 
 

@@ -1,9 +1,29 @@
-from pydantic import BaseModel, EmailStr
+from typing import Optional, List
+from pydantic import BaseModel, EmailStr, Field
 
-class UserRegisterData(BaseModel):
+class UserData(BaseModel):
     email: EmailStr
     password: str
-    age: int
+    age: Optional[int] 
+    name: Optional[str]
+    login_history: Optional[list[str]]
+
+class MoodMapping(BaseModel):
+    Very_Happy: List[str] = Field(..., alias='Very Happy')
+    Happy: List[str] = []
+    Neutral: List[str] = []
+    Sad: List[str] = []
+    Very_Sad: List[str] = Field(..., alias='Very Sad')
+
+class UserPreferences(BaseModel):
+    email: EmailStr
+    mapping: MoodMapping
+    class Config:
+        allow_population_by_field_name = True
+
+
+
+
 class UserPlaylistData(BaseModel):
     uri : str
     name : str
