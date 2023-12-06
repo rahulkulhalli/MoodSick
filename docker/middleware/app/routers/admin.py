@@ -6,15 +6,18 @@ from pydantic import BaseModel
 import urllib.parse
 # from ..main import spotify_user_id, spotify_client_id, spotify_client_secret
 from .spotify_communication import base_categories
-from app import moods
+from app import spotify_user_id, spotify_client_id, spotify_client_secret, moods
+from app.db_communcation.admin import save_admin_refresh_token, get_admin_refresh_token, get_admin_authorization_code, save_admin_authorization_code
 
 router = APIRouter()
 
-moodsick_refreshToken = None
-moodsick_authorization_code = None
 async def get_moodsick_spotify_token():
-    global moodsick_authorization_code
-    global moodsick_refreshToken
+    admin_id = "656ede6aa993f0273facf85d"
+    admin_authorization_code = await get_admin_authorization_code(admin_id)
+    admin_refresh_token = await get_admin_refresh_token(admin_id)
+    if admin_authorization_code is None:
+        raise HTTPException(status_code=401, detail="Moodsick not authorized")
+    
     url = "https://accounts.spotify.com/api/token"
     
     token_headers = {
@@ -23,25 +26,24 @@ async def get_moodsick_spotify_token():
 
     token_data = {
         "grant_type": "authorization_code",
-        "code": moodsick_authorization_code,
+        "code": admin_authorization_code,
         "redirect_uri": "http://localhost:8080/admin/callback"
     }
 
     async with AsyncClient() as client:
         token_response = await client.post(url, data=token_data, headers=token_headers)
-        if moodsick_refreshToken is None and token_response.status_code == 200:
-            moodsick_refreshToken = token_response.json().get("refresh_token")
-        
-        print("Response:", token_response.json())
-        print("Admin Token:", moodsick_authorization_code)
-        print("Admin Refresh:",moodsick_refreshToken)
+        if admin_refresh_token is None or token_response.status_code == 200:
+            access_token = token_response.json().get("access_token")
+            new_user_refresh_token = token_response.json().get("refresh_token")
+            print(f"Refresh token: {new_user_refresh_token}")
+            await save_admin_refresh_token(admin_id, new_user_refresh_token)
+            return access_token
 
-        if token_response.status_code != 200:
-            token = await get_moodsick_refresh_token(moodsick_refreshToken)
-            return token
-        
-        token = token_response.json().get("access_token")
-        return token
+        if admin_refresh_token:
+            new_access_token = await get_moodsick_refresh_token(admin_refresh_token)
+            return new_access_token
+
+        raise HTTPException(status_code=400, detail="Authorization required")
 
 async def get_moodsick_refresh_token(refreshToken):
     url = "https://accounts.spotify.com/api/token"
@@ -50,7 +52,7 @@ async def get_moodsick_refresh_token(refreshToken):
         "refresh_token": refreshToken
     }
     token_headers = {
-        "Authorization": f"Basic {base64.b64encode(f'{spotify_user_id}:{spotify_client_secret}'.encode()).decode()}"
+        "Authorization": f"Basic {base64.b64encode(f'{spotify_client_id}:{spotify_client_secret}'.encode()).decode()}"
     }
     async with AsyncClient() as client:
         token_response = await client.post(url, data=token_data, headers=token_headers)
@@ -64,7 +66,7 @@ async def get_moodsick_refresh_token(refreshToken):
 def create_auth_url():
     base_url = "https://accounts.spotify.com/authorize"
     params = {
-        "client_id": spotify_user_id,
+        "client_id": spotify_client_id,
         "response_type": "code",
         "redirect_uri": 'http://localhost:8080/admin/callback',
         "scope": "playlist-modify-public playlist-modify-private playlist-read-private playlist-read-collaborative user-read-private"
@@ -76,8 +78,8 @@ def create_auth_url():
 async def callback(request: Request):
     code = request.query_params.get('code')
     print(request.query_params)
-    global moodsick_authorization_code
-    moodsick_authorization_code = code
+    admin_id = "656ede6aa993f0273facf85d"
+    await save_admin_authorization_code(admin_id, code)
     # Now you can use this code to get the access token
     return {"message": "Moodsick Authorization Successfull"}
 

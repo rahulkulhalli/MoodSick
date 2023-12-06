@@ -1,5 +1,6 @@
 from typing import Optional, List
 from pydantic import BaseModel, EmailStr, Field
+from app.models.spotify_communication import SongFeature
 
 class UserData(BaseModel):
     email: EmailStr
@@ -7,6 +8,10 @@ class UserData(BaseModel):
     age: Optional[int] 
     name: Optional[str]
     login_history: Optional[list[str]]
+    authorization_code: str = None
+    refresh_token: str = None
+    user_playlist_uri: str = None
+    user_audio_preferance: dict = None
 
 class MoodMapping(BaseModel):
     Very_Happy: List[str] = Field(..., alias='Very Happy')
@@ -20,8 +25,6 @@ class UserPreferences(BaseModel):
     mapping: MoodMapping
     class Config:
         allow_population_by_field_name = True
-
-
 
 
 class UserPlaylistData(BaseModel):
@@ -43,4 +46,8 @@ class UserAudioPreferance(BaseModel):
     avg_tempo: float
     avg_time_signature: int
     avg_valence: float
+
+class UserAudioPreferanceData(BaseModel):
+    user_id: str
+    songs_data: list[SongFeature]
 
