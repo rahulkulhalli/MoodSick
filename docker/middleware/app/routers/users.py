@@ -33,13 +33,12 @@ router = APIRouter()
 
 
 # This function is used to get the token from spotify
-async def get_user_spotify_token():
-    user_id ="656ed920a993f0273facf85b"
+async def get_user_spotify_token(user_id):
     user_authorization_code = await get_user_authorization_code(user_id)
     print(user_authorization_code)
     user_refresh_token = await get_user_refresh_token(user_id)
-    if user_authorization_code is None:
-        raise HTTPException(status_code=401, detail="User not authorized")
+    # if user_authorization_code is None:
+    #     raise HTTPException(status_code=401, detail="User not authorized")
     
     url = "https://accounts.spotify.com/api/token"
 
@@ -88,13 +87,16 @@ async def get_refresh_token(refreshToken):
     
 
 @router.get("/user-auth-url")
-def create_auth_url():
+async def create_auth_url(request: Request):
+    request = await request.json()
+    print(request)
     base_url = "https://accounts.spotify.com/authorize"
     params = {
         "client_id": spotify_client_id,
         "response_type": "code",
         "redirect_uri": "http://localhost:8080/user/callback",
-        "scope": "playlist-modify-public playlist-modify-private playlist-read-private playlist-read-collaborative user-read-private"
+        "scope": "playlist-modify-public playlist-modify-private playlist-read-private playlist-read-collaborative user-read-private",
+        "state": request.get("user_id")
     }
     get_token_url = f"{base_url}?{urllib.parse.urlencode(params)}"
     return get_token_url
@@ -103,8 +105,9 @@ def create_auth_url():
 async def callback(request: Request):
     code = request.query_params.get('code')
     print(request.query_params)
+    user_id = request.query_params.get('state')
     # Now you can use this code to get the access token
-    await save_user_authorization_code("656ed920a993f0273facf85b", code)
+    await save_user_authorization_code(user_id, code)
     return {"message": "User Authorization Successful"}
 
 # async def save_user_playlist(user_id, user_playlist_uri):

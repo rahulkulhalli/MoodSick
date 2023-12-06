@@ -7,6 +7,8 @@ class UserRegisterData(BaseModel):
     age: int
     authorization_code: str = None
     refresh_token: str = None
+    user_playlist_uri: str = None
+    user_audio_preferance: dict = None
 
 class UserPlaylistData(BaseModel):
     uri : str
