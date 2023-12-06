@@ -16,8 +16,6 @@ from asyncio import gather
 
 router = APIRouter()
 
-
-
 base_categories = {
     "rock": ["alt-rock", "alternative", "british", "emo", "garage", "grunge", "hard-rock", "indie", "indie-pop", "j-rock", "psych-rock", "punk", "punk-rock", "rock", "rock-n-roll", "rockabilly"],
     "hip-hop": ["hip-hop"],
@@ -68,20 +66,31 @@ async def create_user_playlist(user_id):
 @router.post("/spotify-recommendations")
 async def get_spotify_and_user_preferences(request: SpotifyRecommendationInput):
     user_id = request.user_id
-    # user_token = await users.get_user_spotify_token(user_id)
-    # moodsick_token = await admin.get_moodsick_spotify_token()
+    user_age = await get_user_age(user_id)
+    moodsick_playlist_uri = None
+    if user_age < 20:
+        moodsick_playlist_uri = SpotifyPlaylist.AGE_10_20.value
+    elif user_age < 30:
+        moodsick_playlist_uri = SpotifyPlaylist.AGE_20_30.value
+    elif user_age < 40:
+        moodsick_playlist_uri = SpotifyPlaylist.AGE_30_40.value
+    elif user_age < 50:
+        moodsick_playlist_uri = SpotifyPlaylist.AGE_40_50.value
+    else:
+        moodsick_playlist_uri = SpotifyPlaylist.AGE_50_60.value
+    
     recommendations_task = get_spotify_recommendations(request)
     user_playlist_data = await get_user_tracks(user_id)
-    user_data_mining = None
     if len(user_playlist_data) == 0:
-        user_data_mining = await get_user_audio_preferance(user_id)
+        await get_user_audio_preferance(user_id)
             
     user_preference_task = get_songs_based_on_audio_preferance(user_id, request)
     
     results = await gather(recommendations_task, user_preference_task)
     return {
         "recommendations": results[0],
-        "user_preferences": set(results[1]),
+        "data_mined_songs": set(results[1]),
+        "moodsick_playlist_uri": "spotify:playlist:" + moodsick_playlist_uri
     }
 
 
@@ -103,6 +112,7 @@ async def get_spotify_recommendations(request: SpotifyRecommendationInput):
     sort_by_popularity = request.sort_by_popularity
     # The following params are cauing the api to fail: mode, key, time_signature
     params_target = {
+        'market': request.market,
         'seed_genres': sampled_genres,
         'limit': limit,
         'target_danceability': request.target_danceability,
@@ -117,6 +127,7 @@ async def get_spotify_recommendations(request: SpotifyRecommendationInput):
     }
 
     params_min_max = {
+        'market': request.market,
         'seed_genres': sampled_genres,
         'limit': limit,
         'min_danceability': request.min_danceability,
@@ -163,15 +174,13 @@ async def get_spotify_recommendations(request: SpotifyRecommendationInput):
         # track_features = await get_track_features(user_token, track_uris)
         # print(track_features)
         # return track_features
-
-        if sort_by_popularity:
-            # Sort the tracks based on popularity
-            track_uris = sorted(track_uris, key=track_uris.get, reverse=True)
-            # Get top 5 tracks
-            track_uris = track_uris[:5]
-        else:
-            # Choose 5 random tracks
-            track_uris = np.random.choice(list(track_uris.keys()), 5, replace=False).tolist()
+        # Sort the tracks based on popularity
+        sorted_uris = sorted(track_uris, key=track_uris.get, reverse=True)
+        # Get top 5 tracks
+        popular_songs = sorted_uris[:5]
+        
+        # Choose 5 random tracks
+        track_uris = np.random.choice(list(track_uris.keys()), 5, replace=False).tolist()
 
         
         # Check if the user has a playlist
@@ -189,7 +198,10 @@ async def get_spotify_recommendations(request: SpotifyRecommendationInput):
         user_age = await get_user_age(user_id)
         await save_to_moodsick_playlist(user_age, moodsick_token, track_uris)
 
-        return track_uris
+        return {
+            "recommended_songs": track_uris,
+            "popular_tracks": popular_songs
+        }
 
 async def save_to_user_playlist(user_id, track_uris, user_playlist_link):
     user_token = await users.get_user_spotify_token(user_id)

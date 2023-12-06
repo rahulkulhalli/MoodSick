@@ -9,6 +9,7 @@ class SpotifyPlaylist(Enum):
     AGE_50_60 = "2Px1aIIcmJhWdYsiQhZePz"
 
 class SpotifyRecommendationInput(BaseModel):
+    market: str = "US"
     user_id: str
     min_danceability: float
     max_danceability: float
