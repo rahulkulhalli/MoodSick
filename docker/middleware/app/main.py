@@ -1,8 +1,11 @@
+import os
 from typing import List
 from fastapi import FastAPI
 from .routers import users, spotify_communication, admin
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
 
 app = FastAPI()
 origins = [
@@ -20,6 +23,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+folder = os.path.dirname(__file__)
+app.mount("/static", StaticFiles(directory="/code/app/static"), name="static")
 
 
 

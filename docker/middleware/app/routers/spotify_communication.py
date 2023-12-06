@@ -68,7 +68,7 @@ async def get_spotify_and_user_preferences(request: SpotifyRecommendationInput):
     else:
         moodsick_playlist_uri = SpotifyPlaylist.AGE_50_60.value
     
-    recommendations_task = get_spotify_recommendations(request)
+    recommendations_task = await get_spotify_recommendations(request)
     user_playlist_data = await get_user_tracks(user_id)
     if len(user_playlist_data) == 0:
         await get_user_audio_preferance(user_id)

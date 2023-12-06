@@ -28,10 +28,11 @@ async def create_user(user: UserData):
 async def login_user(user: UserData):
     try:
         user_data = collection.users.find_one(
-            {"email": user.email}, {"_id": 0})
+            {"email": user.email}, {})
         res = pwd_context.verify(user.password, user_data["password"])
         if user_data and res:
             del user_data["password"]
+            user_data["user_id"] = str(user_data["_id"])
             insert_login_record(user.email)
             return {"message": "Login Successful", "user_data": user_data}
         else:
@@ -141,3 +142,10 @@ async def get_user_tracks(user_id):
     if track:
         return track.get("songs_data")
     return []
+
+
+async def get_genres_from_mood(mood, user_id):
+    mood_data = collection.users.find_one({"_id": ObjectId(user_id)}, {"mood_preferences": 1})
+    genres = mood_data.get("mood_preferences")[mood]
+    return genres
+

@@ -2,6 +2,10 @@ from typing import Optional, List
 from pydantic import BaseModel, EmailStr, Field
 from app.models.spotify_communication import SongFeature
 
+class SpotifyParams(BaseModel):
+    query: str
+    rating: str
+
 class UserData(BaseModel):
     email: EmailStr
     password: str
