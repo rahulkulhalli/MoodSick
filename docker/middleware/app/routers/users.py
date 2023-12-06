@@ -1,6 +1,8 @@
 import os
-from app.db_communcation.users import create_user, login_user, save_user_mood_maping
-from app.models.users import UserData, UserPreferences
+from typing import List
+from app.db_communcation.users import create_user, login_user, save_user_mood_maping, get_genres_from_mood
+from app.models.users import UserData, UserPreferences, SpotifyParams
+from app.models.spotify_communication import SpotifyRecommendationInput
 from fastapi import HTTPException, APIRouter, Request
 from fastapi.responses import FileResponse
 from httpx import AsyncClient
@@ -10,7 +12,10 @@ import urllib.parse
 import pymongo
 from app import spotify_user_id, spotify_client_id, spotify_client_secret
 from app.db_communcation.users import save_user_refresh_token, get_user_refresh_token, get_user_authorization_code, save_user_authorization_code, get_songs_for_user
+from app.routers.spotify_communication import get_spotify_and_user_preferences
 # import pymongo
+import requests
+import json
 
 router = APIRouter()
 
@@ -51,6 +56,33 @@ async def get(response: Request):
     response_data = [(f"http://10.9.0.6/static/{song.get('songs').get('filename')}") for song in response_data]
 
     return response_data
+
+@router.post("/get-recommendations-for-user", tags=["Users"])
+async def get_recommendations_for_user(request: Request):
+    request = await request.json()
+    ratings = request.get("ratings")
+    mood = request.get("mood")
+    input = []
+    for each in ratings:
+        input.append({
+            'query': each["query"],
+            'rating': each["rating"]
+        })
+    url = "http://10.9.0.8/get-recommendation-params"
+    print("input", input)
+    response = requests.post(url, data=json.dumps(input))
+    response = response.json()
+    user_id = request.get("user_id", "656f7c14d74f3263c8d44cd0")
+    genres = await get_genres_from_mood(mood, user_id)
+    response = response["message"]["params"]
+    response["genre"] = ",".join([i for i in genres])
+    response["user_id"] = user_id
+    response["market"] = "US"
+    response["sort_by_popularity"] =False
+    print(response, type(response))
+    model_params = SpotifyRecommendationInput.parse_obj(response)
+    data = await get_spotify_and_user_preferences(model_params)
+    return {"data": "data"}
 
 
 

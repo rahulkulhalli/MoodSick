@@ -1,3 +1,4 @@
+import os
 from typing import List
 from fastapi import FastAPI
 from .routers import users, spotify_communication, admin
@@ -22,6 +23,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+folder = os.path.dirname(__file__)
+app.mount("/static", StaticFiles(directory="/code/app/static"), name="static")
+
+
 
 app.include_router(users.router,
                    prefix="/user")

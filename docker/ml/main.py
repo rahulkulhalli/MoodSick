@@ -18,6 +18,7 @@ async def root():
 
 @app.post("/get-recommendation-params")
 async def spotify(request: List[SpotifyParams]):
+    
     input = []
     for each in request:
         input.append({

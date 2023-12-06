@@ -17,22 +17,22 @@ services:
   #    moodSickNetwork-10.9.0.0:
   #       ipv4_address: 10.9.0.7
 
-  # ml_training:
-  #   platform: linux/arm64/v8
-  #   build:
-  #     context: ./ml_training
-  #     dockerfile: Dockerfile
-  #   image: ml_training
-  #   tty: true
-  #   ports:
-  #     - 5000:80
-  #   volumes:
-  #     - ./ml_training:/ml_model
-  #   env_file:
-  #     - ./ml/.env
-  #   networks:
-  #     moodSickNetwork-10.9.0.0:
-  #       ipv4_address: 10.9.0.8
+  ml_training:
+    platform: linux/arm64/v8
+    build:
+      context: ./ml_training
+      dockerfile: Dockerfile
+    image: ml_training
+    tty: true
+    ports:
+      - 5000:80
+    volumes:
+      - ./ml_training:/ml_model
+    env_file:
+      - ./ml_training/.env
+    networks:
+      moodSickNetwork-10.9.0.0:
+        ipv4_address: 10.9.0.8
 
   # frontend:
   #   build:

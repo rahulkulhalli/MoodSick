@@ -15,6 +15,7 @@
       <p class="debugToggle" v-on:click="toggleDebug()">debug: {{ debug }}</p>
     </div>
     <div class="audioPlayerUI" :class="{ isDisabled: isPlaylistActive }">
+      Listening to #{{ currentSong + 1 }} out of {{ totalSongs }} Snippets
       <div class="albumImage">
         <transition
           name="ballmove"
@@ -32,12 +33,6 @@
         </transition>
         <div class="loader" :key="currentSong">Loading...</div>
       </div>
-      <!-- <div class="albumDetails">
-        <transition name="slide-fade" mode="out-in">
-          {{ song_title }}
-        </transition>
-      </div> -->
-
       <div class="playerButtons">
         <a class="button play" v-on:click="playAudio()" title="Play/Pause Song">
           <transition name="slide-fade" mode="out-in">
@@ -63,6 +58,7 @@
         ></a>
 
         <star-rating
+          :key="randomKey"
           v-model:rating="rating"
           @update:rating="setRating"
           v-bind:increment="1"
@@ -89,13 +85,10 @@ export default {
       type: Array,
       default: [],
     },
-    totalSongs: {
-      type: Number,
-      default: 0
-    }
   },
   data() {
     return {
+      randomKey: 0,
       rating: 0,
       audio: "",
       imgLoaded: false,
@@ -110,6 +103,7 @@ export default {
       debug: false,
       musicPlaylist: [],
       audioFile: "",
+      totalSongs: 0
     };
   },
   created() {
@@ -117,7 +111,7 @@ export default {
     this.musicPlaylist = this.musicPlaylist.map((item) => {
       return { url: item };
     });
-    this.to
+    this.totalSongs = this.musicPlaylist.length;
   },
   computed: {
     currentTrack() {
@@ -159,8 +153,16 @@ export default {
       this.isPlaylistActive = !this.isPlaylistActive;
     },
     nextSong: function () {
+      if (this.rating == 0) {
+        alert("Please select a rating!!!");
+        return;
+      }
+      this.rating = 0;
+      this.randomKey +=1;
       if (this.currentSong < this.musicPlaylist.length - 1)
         this.changeSong(this.currentSong + 1);
+      else
+        this.stopAudio()
     },
     prevSong: function () {
       if (this.currentSong > 0) this.changeSong(this.currentSong - 1);
@@ -252,8 +254,7 @@ export default {
       this.$emit("set-rating-data", {
         rating: rating,
         audioFile: this.audioFile,
-      });
-
+      }, this.currentSong == this.totalSongs-1);
       this.nextSong();
     },
   },
@@ -265,7 +266,6 @@ export default {
   beforeDestroy: function () {
     this.audio.removeEventListener("ended", this.handleEnded);
     this.audio.removeEventListener("loadedmetadata", this.handleEnded);
-
     clearTimeout(this.checkingCurrentPositionInTrack);
   },
 };
