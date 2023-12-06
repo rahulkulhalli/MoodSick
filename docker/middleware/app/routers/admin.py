@@ -5,7 +5,7 @@ import base64
 from pydantic import BaseModel
 import urllib.parse
 # from ..main import spotify_user_id, spotify_client_id, spotify_client_secret
-from .spotify_communication import base_categories
+from app.routers import base_categories
 from app import spotify_user_id, spotify_client_id, spotify_client_secret, moods
 from app.db_communcation.admin import save_admin_refresh_token, get_admin_refresh_token, get_admin_authorization_code, save_admin_authorization_code
 

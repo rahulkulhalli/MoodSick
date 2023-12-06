@@ -13,21 +13,10 @@ from app.db_communcation.spotify_communications import save_track_audio_preferan
 from app.db_communcation.users import get_user_playlist_uri, get_user_age, save_user_playlist_uri, save_user_audio_preferance, get_user_tracks
 import json
 from asyncio import gather
+from app.routers import base_categories
 
 router = APIRouter()
 
-base_categories = {
-    "rock": ["alt-rock", "alternative", "british", "emo", "garage", "grunge", "hard-rock", "indie", "indie-pop", "j-rock", "psych-rock", "punk", "punk-rock", "rock", "rock-n-roll", "rockabilly"],
-    "hip-hop": ["hip-hop"],
-    "blues": ["blues"],
-    "jazz": ["bossanova", "jazz"],
-    "classical": ["classical", "opera"],
-    "metal": ["black-metal", "death-metal", "heavy-metal", "metal", "metal-misc", "metalcore"],
-    "reggae": ["reggae", "dancehall"],
-    "country": ["bluegrass", "country", "honky-tonk"],
-    "pop": ["cantopop", "disney", "j-pop", "k-pop", "latin", "latino", "mandopop", "pop", "pop-film", "power-pop", "synth-pop"],
-    "disco": ["disco"]
-}
 
 async def read_spotify_profile_user(user_token):
     url = 'https://api.spotify.com/v1/me'

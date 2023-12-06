@@ -94,7 +94,7 @@ def transform_preferences_data(preferences: UserPreferences):
     return data
 
 
-async def create_user(user: UserRegisterData):
+async def create_user(user: UserData):
     _id = collection.users.insert_one(dict(user))
     # user = users_serializer(collection.find({"_id": _id.inserted_id}))
     return {"status": "Ok","data": user}
