@@ -1,4 +1,4 @@
-from app.models.spotify_communication import SpotifyPlaylist, ModelParams, SongFeature
+from app.models.spotify_communication import SpotifyPlaylist, SpotifyRecommendationInput, SongFeature
 from . import db_name as collection
 from bson.objectid import ObjectId
 from typing import List
@@ -21,3 +21,7 @@ async def save_track_audio_preferances(user_id, spotify_communications: SongFeat
     _id = collection.track_features.insert_one(data)
     # user = users_serializer(collection.find({"_id": _id.inserted_id}))
     return {"status": "Ok","data": "user"}
+
+async def get_track_audio_preferances(user_id):
+    user = collection.track_features.find_one({"user_id": user_id})
+    return user.get("songs_data")

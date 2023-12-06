@@ -1,14 +1,15 @@
 import os
-# from app.db_communcation.users import create_user
-# from app.models.users import UserRegisterData
+from app.db_communcation.users import create_user, login_user, save_user_mood_maping
+from app.models.users import UserData, UserPreferences
 from fastapi import HTTPException, APIRouter, Request
+from fastapi.responses import FileResponse
 from httpx import AsyncClient
 import base64
 from pydantic import BaseModel
 import urllib.parse
 import pymongo
 from app import spotify_user_id, spotify_client_id, spotify_client_secret
-from app.db_communcation.users import save_user_refresh_token, get_user_refresh_token, get_user_authorization_code, save_user_authorization_code
+from app.db_communcation.users import save_user_refresh_token, get_user_refresh_token, get_user_authorization_code, save_user_authorization_code, get_songs_for_user
 # import pymongo
 
 router = APIRouter()
@@ -20,26 +21,46 @@ router = APIRouter()
 # async def read_users():
 #     return [{"username": "Test-1"}, {"username": "Test-2"}]
 
-# @router.post("/login", tags=["users"])
-# async def login():
-#     return None
+@router.post("/login", tags=["users"])
+async def login(creds: UserData):
+    result = await login_user(creds)
+    return result
 
-# @router.post("/register", tags=["users"])
-# async def register(user_data: UserRegisterData):
-#     await create_user(user_data)
-#     return "None"
+@router.post("/register", tags=["users"])
+async def register(user_data: UserData):
+    result = await create_user(user_data)
+    return {"Status": result}
 
+@router.post("/save-user-mood-genres", tags=["Users"])
+async def save_user_mood_genres(user_moods: UserPreferences):
+    result = await save_user_mood_maping(user_moods)
+    return {"Status": result}
+
+# {moods: "happy"}
+@router.get("/get-songs", tags=["Users"])
+async def get(response: Request):
+    response = await response.json()
+    mood = response.get("mood")
+    user_id = response.get("user_id")
+    request_data_dict = {
+        "user_id": user_id,
+        "mood": mood
+    }
+    response_data = await get_songs_for_user(request_data_dict)
+
+    response_data = [(f"http://10.9.0.6/static/{song.get('songs').get('filename')}") for song in response_data]
+
+    return response_data
 
 
 
 # This function is used to get the token from spotify
-async def get_user_spotify_token():
-    user_id ="656ed920a993f0273facf85b"
+async def get_user_spotify_token(user_id):
     user_authorization_code = await get_user_authorization_code(user_id)
     print(user_authorization_code)
     user_refresh_token = await get_user_refresh_token(user_id)
-    if user_authorization_code is None:
-        raise HTTPException(status_code=401, detail="User not authorized")
+    # if user_authorization_code is None:
+    #     raise HTTPException(status_code=401, detail="User not authorized")
     
     url = "https://accounts.spotify.com/api/token"
 
@@ -88,13 +109,16 @@ async def get_refresh_token(refreshToken):
     
 
 @router.get("/user-auth-url")
-def create_auth_url():
+async def create_auth_url(request: Request):
+    request = await request.json()
+    print(request)
     base_url = "https://accounts.spotify.com/authorize"
     params = {
         "client_id": spotify_client_id,
         "response_type": "code",
         "redirect_uri": "http://localhost:8080/user/callback",
-        "scope": "playlist-modify-public playlist-modify-private playlist-read-private playlist-read-collaborative user-read-private"
+        "scope": "playlist-modify-public playlist-modify-private playlist-read-private playlist-read-collaborative user-read-private",
+        "state": request.get("user_id")
     }
     get_token_url = f"{base_url}?{urllib.parse.urlencode(params)}"
     return get_token_url
@@ -103,8 +127,9 @@ def create_auth_url():
 async def callback(request: Request):
     code = request.query_params.get('code')
     print(request.query_params)
+    user_id = request.query_params.get('state')
     # Now you can use this code to get the access token
-    await save_user_authorization_code("656ed920a993f0273facf85b", code)
+    await save_user_authorization_code(user_id, code)
     return {"message": "User Authorization Successful"}
 
 # async def save_user_playlist(user_id, user_playlist_uri):

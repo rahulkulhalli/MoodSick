@@ -7,6 +7,17 @@
             <h3 class="text-center mb-4">Register</h3>
             <form @submit.prevent="register">
               <div class="mb-3">
+                <label for="email" class="form-label">Your Name</label>
+                <input
+                  type="email"
+                  class="form-control"
+                  id="email"
+                  v-model="user.name"
+                  placeholder="Enter email"
+                  required
+                />
+              </div>
+              <div class="mb-3">
                 <label for="email" class="form-label">Email address</label>
                 <input
                   type="email"
@@ -28,7 +39,7 @@
                   required
                 />
               </div>
-              <div class="mb-4">
+              <div class="mb-3">
                 <label for="confirmPassword" class="form-label"
                   >Confirm Password</label
                 >
@@ -97,14 +108,40 @@ export default {
         email: "",
         password: "",
         confirmPassword: "",
-        age: null, // You can set default values if needed
-        gender: "", // Default as empty string or a specific value
+        age: null, 
+        gender: "",
+        name: ""
       },
     };
   },
   methods: {
     async register() {
-      // Implement your registration logic here
+      try {
+        const response = await fetch("http://10.9.0.6/user/register", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(this.user),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to register");
+        }
+        const responseData = await response.json();
+        if (responseData.Status == true) {
+          alert("Success. Please login now");
+        } else if (responseData.Status == "Already Exists") {
+          alert("Email Already Exists");
+        } else if (responseData.Status == false) {
+          alert("Some Error Occurred! Pleaser Try Again!");
+        } else {
+          alert("Some Error Occurred! Pleaser Try Again!");
+        }
+      } catch (error) {
+        console.error(error);
+        alert("Some Error Occurred! Pleaser Try Again!");
+      }
     },
   },
 };

@@ -8,7 +8,9 @@ class SpotifyPlaylist(Enum):
     AGE_40_50 = "2lyDBxRyHXRH5t5gHdTXXj"
     AGE_50_60 = "2Px1aIIcmJhWdYsiQhZePz"
 
-class ModelParams(BaseModel):
+class SpotifyRecommendationInput(BaseModel):
+    market: str = "US"
+    user_id: str
     min_danceability: float
     max_danceability: float
     target_danceability: float
@@ -63,3 +65,4 @@ class SongFeature(BaseModel):
     tempo: float
     time_signature: int
     valence: float
+    

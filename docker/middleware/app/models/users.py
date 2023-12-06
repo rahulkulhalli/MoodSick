@@ -1,12 +1,31 @@
-from pydantic import BaseModel, EmailStr
+from typing import Optional, List
+from pydantic import BaseModel, EmailStr, Field
 from app.models.spotify_communication import SongFeature
 
-class UserRegisterData(BaseModel):
+class UserData(BaseModel):
     email: EmailStr
     password: str
-    age: int
+    age: Optional[int] 
+    name: Optional[str]
+    login_history: Optional[list[str]]
     authorization_code: str = None
     refresh_token: str = None
+    user_playlist_uri: str = None
+    user_audio_preferance: dict = None
+
+class MoodMapping(BaseModel):
+    Very_Happy: List[str] = Field(..., alias='Very Happy')
+    Happy: List[str] = []
+    Neutral: List[str] = []
+    Sad: List[str] = []
+    Very_Sad: List[str] = Field(..., alias='Very Sad')
+
+class UserPreferences(BaseModel):
+    email: EmailStr
+    mapping: MoodMapping
+    class Config:
+        allow_population_by_field_name = True
+
 
 class UserPlaylistData(BaseModel):
     uri : str

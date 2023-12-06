@@ -4,7 +4,9 @@ from httpx import AsyncClient
 import base64
 from pydantic import BaseModel
 import urllib.parse
-from app import spotify_user_id, spotify_client_id, spotify_client_secret
+# from ..main import spotify_user_id, spotify_client_id, spotify_client_secret
+from app.routers import base_categories
+from app import spotify_user_id, spotify_client_id, spotify_client_secret, moods
 from app.db_communcation.admin import save_admin_refresh_token, get_admin_refresh_token, get_admin_authorization_code, save_admin_authorization_code
 
 router = APIRouter()
@@ -80,3 +82,10 @@ async def callback(request: Request):
     await save_admin_authorization_code(admin_id, code)
     # Now you can use this code to get the access token
     return {"message": "Moodsick Authorization Successfull"}
+
+
+@router.get("/genres-moods")
+async def get_genres():
+    data = base_categories
+    print(data.keys())
+    return {"genres": list(base_categories.keys()), "moods": moods}
