@@ -10,7 +10,7 @@ import numpy as np
 from app.models.spotify_communication import SpotifyPlaylist, SpotifyRecommendationInput, SongFeature
 from app.models.users import UserPlaylistData, UserAudioPreferance
 from app.db_communcation.spotify_communications import save_track_audio_preferances, get_track_audio_preferances
-from app.db_communcation.users import get_user_playlist_uri, get_user_age, save_user_playlist_uri, save_user_audio_preferance, get_user_tracks
+from app.db_communcation.users import get_user_playlist_uri, get_user_age, save_user_playlist_uri, save_user_audio_preferance, get_user_tracks, edit_songs_data
 import json
 from asyncio import gather
 from app.routers import base_categories

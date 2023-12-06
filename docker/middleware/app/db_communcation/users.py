@@ -1,3 +1,4 @@
+import random
 from app.models.users import UserData, UserPreferences
 from . import db_name as collection
 from passlib.context import CryptContext
@@ -71,6 +72,116 @@ On n=1+ flow,
     - if 5, then 5
 """
 
+async def get_songs_for_user(request_data_dict: dict):
+    mood = request_data_dict.get("mood")
+    user_id = request_data_dict.get("user_id")
+    try:
+        user_mood_genres = await get_user_mood_genres(user_id, mood)
+        print(user_mood_genres)
+        length = len(user_mood_genres)
+        if length == 1:
+            #['rock'] then select 5 songs from rock according to the least number of times played
+            songs = collection.songs.find({"genre": user_mood_genres[0]}).sort("number_of_times_played", 1).limit(5)
+            songs = list(songs)
+            for song in songs:
+                song_id = song.get("songs").get("_id")
+                collection.songs.update_one({"_id": song_id}, {"$inc": {"number_of_times_played": 1}})
+            print(songs)
+            return songs
+        elif length == 2:
+            #['rock', "jazz"] then select 2 songs from each genre according to the least number of times played
+            songs = collection.songs.aggregate([
+                {"$match": {"genre": {"$in": user_mood_genres}}},
+                 {"$sort": {"number_of_times_played": 1}}, 
+                {"$group": {"_id": "$genre", "songs": {"$push": "$$ROOT"}}},
+                {"$project": {"songs": {"$slice": ["$songs", 2]}}}
+            ])
+            songs = list(songs)
+            print(songs)
+            for song in songs:
+                song_id = song.get("songs").get("_id")
+                collection.songs.update_one({"_id": song_id}, {"$inc": {"number_of_times_played": 1}})
+            return songs
+        elif length == 3:
+            songs = collection.songs.aggregate([
+                {"$match": {"genre": {"$in": user_mood_genres}}},
+                {"$sort": {"number_of_times_played": 1}},
+                {"$group": {"_id": "$genre", "songs": {"$push": "$$ROOT"}}},
+                {"$project": {"songs": {"$slice": ["$songs", 2]}}}, 
+                {"$unwind": "$songs"},
+                {"$limit": 6} 
+            ])
+            songs = list(songs)
+            print(songs)
+            for song in songs:
+                song_id = song.get("songs").get("_id")
+                collection.songs.update_one({"_id": song_id}, {"$inc": {"number_of_times_played": 1}})
+            return
+        elif length == 4:
+            songs = collection.songs.aggregate([
+                {"$match": {"genre": {"$in": user_mood_genres}}},
+                {"$sort": {"number_of_times_played": 1}},
+                {"$group": {"_id": "$genre", "songs": {"$push": "$$ROOT"}}},
+                {"$project": {"songs": {"$slice": ["$songs", 1]}}},
+                {"$unwind": "$songs"},
+                {"$limit": 4}
+            ])
+            for song in songs:
+                song_id = song.get("songs").get("_id")
+                collection.songs.update_one({"_id": song_id}, {"$inc": {"number_of_times_played": 1}})
+            return songs
+        elif length == 5:
+            songs = collection.songs.aggregate([
+                {"$match": {"genre": {"$in": user_mood_genres}}},
+                {"$sort": {"number_of_times_played": 1}},
+                {"$group": {"_id": "$genre", "songs": {"$push": "$$ROOT"}}},
+                {"$project": {"songs": {"$slice": ["$songs", 1]}}},
+                {"$unwind": "$songs"},
+                {"$limit": 5}
+            ])
+            songs = list(songs)
+            for song in songs:
+                song_id = song.get("songs").get("_id")
+                collection.songs.update_one({"_id": song_id}, {"$inc": {"number_of_times_played": 1}})
+            return songs
+        
+    except Exception as e:
+        print("Error in  get_songs_for_user", e)
+        print(traceback.format_exc())
+        return []
+
+
+
+#      "mood_preferences": {
+#     "Very Happy": [
+#       "rock"
+#     ],
+#     "Happy": [],
+#     "Neutral": [],
+#     "Sad": [
+#       "hip-hop",
+#       "blues",
+#       "rock"
+#     ],
+#     "Very Sad": [
+#       "classical",
+#       "metal",
+#       "reggae"
+#     ]
+#   }
+
+async def get_user_mood_genres(user_id, mood):
+    try:
+        print(mood)
+        user_data = collection.users.find_one({"_id": ObjectId(user_id)})
+        if user_data is not None:
+            mood_preferences = user_data.get("mood_preferences")
+            return mood_preferences.get(mood)
+    except Exception as e:
+        print("Error in  get_user_mood_genres", e)
+        print(traceback.format_exc())
+        return []
+
 
 async def save_user_mood_maping(data: UserPreferences):
     try:
@@ -141,3 +252,14 @@ async def get_user_tracks(user_id):
     if track:
         return track.get("songs_data")
     return []
+
+def edit_songs_data():
+    # Get all the songs from the database
+    songs = list(collection.songs.find())
+    # Update the songs data and create a fields number of songs played
+    for song in songs:
+        song_id = song.get("_id")
+        song["number_of_times_played"] = random.randint(1, 10)
+        collection.songs.update_one({"_id": ObjectId(song_id)}, {"$set": song})
+
+    return {"status": "Ok"}
