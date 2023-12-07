@@ -11,7 +11,7 @@ from pydantic import BaseModel
 import urllib.parse
 import pymongo
 from app import spotify_user_id, spotify_client_id, spotify_client_secret
-from app.db_communcation.users import save_user_refresh_token, get_user_refresh_token, get_user_authorization_code, save_user_authorization_code, get_songs_for_user
+from app.db_communcation.users import save_user_refresh_token, get_user_refresh_token, get_user_authorization_code, save_user_authorization_code, get_songs_for_user, get_user_data
 from app.routers.spotify_communication import get_spotify_and_user_preferences
 # import pymongo
 import requests
@@ -86,6 +86,29 @@ async def get_recommendations_for_user(request: Request):
     model_params = SpotifyRecommendationInput.parse_obj(response)
     data = await get_spotify_and_user_preferences(model_params)
     return {"data": data}
+
+# This API is to get and generate data for user dashboard
+@router.post("/user-dashboard")
+async def get_user_dashboard(request: Request):
+    request = await request.json()
+    # Get user ID from request
+    user_id = request.get("user_id")
+    # Write code in db_communication to dump of Spotify recommendations
+    # model_recommendations_for_user = await get_model_reccomendations_for_user(user_id)
+
+    # Get user data from database
+    user_data = await get_user_data(user_id)
+    # Convert userData into UserData object
+    user_data = UserData.parse_obj(user_data)
+    user_data = user_data.dict()
+
+    # Write code in db_communication/users.py to get dump of ratings that the user has given
+    # user_rating_dumps = await get_user_rating_dumps(user_id)
+
+    # Write code in db_communication/users.py to get dump of model-generated params for the user
+    # dump_model_params = await get_dump_model_params(user_id)
+
+    return {"user_data": user_data}
 
 
 # This function is used to get the token from spotify

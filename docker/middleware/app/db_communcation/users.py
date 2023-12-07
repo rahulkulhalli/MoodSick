@@ -271,3 +271,7 @@ def edit_songs_data():
         collection.songs.update_one({"_id": ObjectId(song_id)}, {"$set": song})
 
     return {"status": "Ok"}
+
+async def get_user_data(user_id):
+    user = collection.users.find_one({"_id": ObjectId(user_id)})
+    return user
