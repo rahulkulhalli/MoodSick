@@ -1,9 +1,9 @@
-from typing import List, Union
-from generate_spotify_params import get_spotify_params, load_model
-from fastapi import Depends, FastAPI
-from pydantic import BaseModel
-import os
+from typing import List
 
+from fastapi import FastAPI
+from pydantic import BaseModel
+
+from generate_spotify_params import get_spotify_params, load_model
 
 app = FastAPI()
 

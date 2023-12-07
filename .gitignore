@@ -163,7 +163,6 @@ cython_debug/
 data/*
 docker/ml_training/src/models/*.pt
 src/models/*.pt
-docker/ml_training/src/.env
 
 .DS_Store
 

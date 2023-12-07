@@ -113,7 +113,7 @@ async def get_songs_for_user(request_data_dict: dict):
                 {"$limit": 6} 
             ])
             songs = list(songs)
-            print(songs)
+            # print(songs)
             for song in songs:
                 song_id = song.get("songs").get("_id")
                 collection.songs.update_one({"_id": song_id}, {"$inc": {"number_of_times_played": 1}})
@@ -127,6 +127,7 @@ async def get_songs_for_user(request_data_dict: dict):
                 {"$unwind": "$songs"},
                 {"$limit": 4}
             ])
+            songs = list(songs)
             for song in songs:
                 song_id = song.get("songs").get("_id")
                 collection.songs.update_one({"_id": song_id}, {"$inc": {"number_of_times_played": 1}})

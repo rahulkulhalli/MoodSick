@@ -11,8 +11,14 @@ async def save_track_audio_preferances(user_id, spotify_communications: SongFeat
     # {user_id: "user_id", songs_data: [{song_id: "song_id", danceability: 0.5, energy: 0.5, ...}, ...]}
     all_data = list()
     for feature_list in spotify_communications:
-        all_data.extend([dict(feature) for feature in feature_list])
-
+        if isinstance(feature_list, SongFeature):
+            all_data.append(feature_list.dict())
+        elif isinstance(feature_list, list) and isinstance(feature_list[0], SongFeature):
+            for feature in feature_list:
+                all_data.append(feature.dict())
+        else:
+            print(f"WTF???????????????? {feature_list}")
+    # print(f"Save Track Audio Preferance: {all_data}")
     data = {
         "user_id": user_id,
         "songs_data": all_data,

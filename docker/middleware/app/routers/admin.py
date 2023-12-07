@@ -45,6 +45,7 @@ async def get_moodsick_spotify_token():
 
         raise HTTPException(status_code=400, detail="Authorization required")
 
+
 async def get_moodsick_refresh_token(refreshToken):
     url = "https://accounts.spotify.com/api/token"
     token_data = {
@@ -74,6 +75,7 @@ def create_auth_url():
     get_token_url = f"{base_url}?{urllib.parse.urlencode(params)}"
     return get_token_url
 
+
 @router.get("/callback")
 async def callback(request: Request):
     code = request.query_params.get('code')
@@ -89,3 +91,17 @@ async def get_genres():
     data = base_categories
     print(data.keys())
     return {"genres": list(base_categories.keys()), "moods": moods}
+
+
+@router.get("/dashboard")
+def get_dashboard_data(request: Request):
+    user_id = request.get('user_id')
+    if user_id is None:
+        return {"message": "Could not find data for the given User ID!"}
+
+    '''
+    We will generate the following plots for the user:
+    1. Average ratings over time
+    2. Comparison of playlist-generated descriptors v/s our descriptors
+    3. 
+    '''

@@ -41,6 +41,7 @@ async def save_user_mood_genres(user_moods: UserPreferences):
     result = await save_user_mood_maping(user_moods)
     return {"Status": result}
 
+
 # {moods: "happy"}
 @router.get("/get-songs", tags=["Users"])
 async def get(response: Request):
@@ -52,10 +53,12 @@ async def get(response: Request):
         "mood": mood
     }
     response_data = await get_songs_for_user(request_data_dict)
-
+    print(list(response_data))
     response_data = [(f"http://10.9.0.6/static/{song.get('songs').get('filename')}") for song in response_data]
+    print(response_data)
 
     return response_data
+
 
 @router.post("/get-recommendations-for-user", tags=["Users"])
 async def get_recommendations_for_user(request: Request):
@@ -78,12 +81,11 @@ async def get_recommendations_for_user(request: Request):
     response["genre"] = ",".join([i for i in genres])
     response["user_id"] = user_id
     response["market"] = "US"
-    response["sort_by_popularity"] =False
+    response["sort_by_popularity"] = False
     print(response, type(response))
     model_params = SpotifyRecommendationInput.parse_obj(response)
     data = await get_spotify_and_user_preferences(model_params)
-    return {"data": "data"}
-
+    return {"data": data}
 
 
 # This function is used to get the token from spotify

@@ -51,7 +51,7 @@ services:
       dockerfile: Dockerfile
     tty: true
     env_file:
-      - ./middleware/app/.env
+      - middleware/.env
     ports:
       - 8080:80
     volumes:
