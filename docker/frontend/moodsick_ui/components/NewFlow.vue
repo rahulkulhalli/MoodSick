@@ -84,32 +84,32 @@ export default {
         "http://10.9.0.6/static/metal.00001.wav",
       ];
 
-      this.show_music_player = true;
-      this.songs_list = random_songs;
-      // try {
-      //   const response = await fetch("http://10.9.0.6/user/get-songs", {
-      //     method: "POST",
-      //     headers: {
-      //       "Content-Type": "application/json",
-      //     },
-      //     body: JSON.stringify({
-      //       email: "this.user_data.email",
-      //       mood: mood
-      //     }),
-      //   });
-      //   if (!response.ok) {
-      //     throw new Error("Failed to Login");
-      //   }
-      //   const responseData = await response.json();
-      //   console.log(responseData);
-      //   if (responseData == "Success") {
-
-      //   } else {
-
-      //   }
-      // } catch (error) {
-      //   // alert("Some Error Occurred! Pleaser Try Again!");
-      // }
+      try {
+        const response = await fetch("http://10.9.0.6/user/get-songs", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            user_id: this.user_data.user_id,
+            mood: mood,
+          }),
+        });
+        if (!response.ok) {
+          throw new Error("Failed to Login");
+        }
+        const responseData = await response.json();
+        if(responseData.length > 0){
+          this.show_music_player = true;
+          this.songs_list = responseData;
+        } else {
+          this.show_music_player = true;
+          this.songs_list = random_songs;
+        }
+      } catch (error) {
+        console.log(error);
+        alert("Some Error Occurred! Pleaser Try Again!");
+      }
     },
     async setSongRating(data, is_last = false) {
       data.audioFile = data.audioFile
@@ -136,7 +136,7 @@ export default {
               body: JSON.stringify({
                 ratings: this.current_user_rating,
                 user_id: this.user_data.user_id,
-                mood: this.mood
+                mood: this.mood,
               }),
             }
           );

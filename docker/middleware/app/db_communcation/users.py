@@ -33,7 +33,10 @@ async def login_user(user: UserData):
         res = pwd_context.verify(user.password, user_data["password"])
         if user_data and res:
             del user_data["password"]
-            user_data["user_id"] = str(user_data["_id"])
+            user_id = str(user_data["_id"])
+            user_data["user_id"] = user_id
+            # print(type(user_data["_id"]))
+            # user_data["user_id"] = str(user_data["_id"])
             insert_login_record(user.email)
             return {"message": "Login Successful", "user_data": user_data}
         else:
@@ -74,6 +77,7 @@ On n=1+ flow,
 """
 
 async def get_songs_for_user(request_data_dict: dict):
+    print(request_data_dict)
     mood = request_data_dict.get("mood")
     user_id = request_data_dict.get("user_id")
     try:
