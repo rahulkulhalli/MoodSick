@@ -1,5 +1,6 @@
 <template>
   <ClientOnly>
+    <button class="btn btn-primary" @click="loginToSpotify"> Login to Spotify </button>
     <FirstLogin v-if="login_type=='first'"></FirstLogin>
     <NewFlow v-else></NewFlow>
   </ClientOnly>
@@ -24,12 +25,19 @@ export default {
       return
     } 
     console.log(this.user_data.login_history.length);
-    if (Boolean(this.user_data.login_history) && this.user_data.login_history.length > 1){
+    if (Boolean(this.user_data.login_history) && this.user_data.login_history.length > 0){
 
     } else {
       this.login_type = 'first';
     }
 
+  },
+
+  methods : {
+    loginToSpotify(){
+
+
+    }
   }
 };
 </script>

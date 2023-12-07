@@ -30,8 +30,8 @@ async def login_user(user: UserData):
     try:
         user_data = collection.users.find_one(
             {"email": user.email}, {})
-        res = pwd_context.verify(user.password, user_data["password"])
-        if user_data and res:
+        # res = pwd_context.verify(user.password, user_data["password"])
+        if user_data and (user.password == user_data["password"]):
             del user_data["password"]
             user_id = str(user_data["_id"])
             user_data["user_id"] = user_id
@@ -82,8 +82,9 @@ async def get_songs_for_user(request_data_dict: dict):
     user_id = request_data_dict.get("user_id")
     try:
         user_mood_genres = await get_user_mood_genres(user_id, mood)
-        print(user_mood_genres)
+        print("user_mood_genres", user_mood_genres)
         length = len(user_mood_genres)
+        print(length)
         if length == 1:
             #['rock'] then select 5 songs from rock according to the least number of times played
             songs = collection.songs.find({"genre": user_mood_genres[0]}).sort("number_of_times_played", 1).limit(5)
@@ -92,7 +93,7 @@ async def get_songs_for_user(request_data_dict: dict):
                 song_id = song.get("songs").get("_id")
                 collection.songs.update_one({"_id": song_id}, {"$inc": {"number_of_times_played": 1}})
             print(songs)
-            return songs
+            return list(songs)
         elif length == 2:
             #['rock', "jazz"] then select 2 songs from each genre according to the least number of times played
             songs = collection.songs.aggregate([
@@ -117,11 +118,11 @@ async def get_songs_for_user(request_data_dict: dict):
                 {"$limit": 6} 
             ])
             songs = list(songs)
-            # print(songs)
+            print(songs)
             for song in songs:
                 song_id = song.get("songs").get("_id")
                 collection.songs.update_one({"_id": song_id}, {"$inc": {"number_of_times_played": 1}})
-            return
+            return songs
         elif length == 4:
             songs = collection.songs.aggregate([
                 {"$match": {"genre": {"$in": user_mood_genres}}},
