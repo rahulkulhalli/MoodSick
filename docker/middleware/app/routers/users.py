@@ -16,6 +16,7 @@ from app.routers.spotify_communication import get_spotify_and_user_preferences
 # import pymongo
 import requests
 import json
+from bson import json_util
 
 router = APIRouter()
 
@@ -29,7 +30,9 @@ router = APIRouter()
 @router.post("/login", tags=["users"])
 async def login(creds: UserData):
     result = await login_user(creds)
-    return result
+    print(result)
+    response = json.loads(json_util.dumps(result))
+    return response
 
 @router.post("/register", tags=["users"])
 async def register(user_data: UserData):
@@ -43,7 +46,7 @@ async def save_user_mood_genres(user_moods: UserPreferences):
 
 
 # {moods: "happy"}
-@router.get("/get-songs", tags=["Users"])
+@router.post("/get-songs", tags=["Users"])
 async def get(response: Request):
     response = await response.json()
     mood = response.get("mood")
