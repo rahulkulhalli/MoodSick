@@ -176,18 +176,18 @@ async def create_auth_url(request: Request):
     params = {
         "client_id": spotify_client_id,
         "response_type": "code",
-        "redirect_uri": "http://localhost:8080/user/callback",
+        "redirect_uri": "http://localhost:3000/SpotifyCallback",
         "scope": "playlist-modify-public playlist-modify-private playlist-read-private playlist-read-collaborative user-read-private",
         "state": request.get("user_id")
     }
     get_token_url = f"{base_url}?{urllib.parse.urlencode(params)}"
     return get_token_url
 
-@router.get("/callback")
+@router.get("/save-user-auth-code")
 async def callback(request: Request):
-    code = request.query_params.get('code')
-    print(request.query_params)
-    user_id = request.query_params.get('state')
+    request = await request.json()
+    user_id = request.get("user_id")
+    code = request.get("code")
     # Now you can use this code to get the access token
     await save_user_authorization_code(user_id, code)
     return {"message": "User Authorization Successful"}
