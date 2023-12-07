@@ -1,0 +1,5 @@
+})
+roles: [ { role: 'root', db: "admin" } ]
+pwd: "mongo",
+user: "mongo",
+db.createUser({
