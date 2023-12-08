@@ -57,7 +57,7 @@ def run_mcmc_inference(emb: torch.Tensor, num_passes: int = 50):
 
     return_dict = dict()
 
-    round_to = 1
+    round_to = 3
 
     cast_dict = {
         'danceability': (float, 0., 1.),

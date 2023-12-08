@@ -23,3 +23,8 @@ RUN pip3 install --upgrade pip
 
 # Install requirements for ml_training
 RUN pip3 install --no-cache-dir -r requirements.txt
+
+WORKDIR /ml_model/src
+
+# The below command will run the app from main.py inside the docker container with reload functionality
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80", "--reload"]

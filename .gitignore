@@ -118,7 +118,7 @@ celerybeat.pid
 
 # SageMath parsed files
 *.sage.py
-
+# mongo/
 # Environments
 .env
 .venv
@@ -163,6 +163,33 @@ cython_debug/
 data/*
 docker/ml_training/src/models/*.pt
 src/models/*.pt
-docker/ml_training/src/.env
 
 .DS_Store
+
+
+#Frontend Stuff:
+
+# Nuxt dev/build outputs
+.output
+.data
+.nuxt
+.nitro
+.cache
+dist
+
+# Node dependencies
+node_modules
+
+# Logs
+logs
+*.log
+
+# Misc
+.DS_Store
+.fleet
+.idea
+
+# Local env files
+.env
+.env.*
+!.env.example
