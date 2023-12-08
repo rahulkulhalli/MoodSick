@@ -1,5 +1,5 @@
 
-FROM node:20
+FROM node:latest
 
 # Create and change to the app directory.
 WORKDIR /usr/src/app
@@ -15,9 +15,13 @@ RUN npm install
 # Copy local code to the container image.
 COPY . .
 
+
+RUN npm run build
+
+
 # Expose port 3000 to the outside once the container has launched.
 EXPOSE 3000
 
 # Run the web service on container startup.
 # CMD ["npm", "run", "dev"]
-CMD ["npm", "run", "dev"]
+CMD ["npm", "start"]
