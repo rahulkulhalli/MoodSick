@@ -83,9 +83,9 @@ async def get_songs_for_user(request_data_dict: dict):
     try:
         user_mood_genres = await get_user_mood_genres(user_id, mood)
         mood_genre = []
-        print(user_mood_genres)
+        # print(user_mood_genres)
         for genre in user_mood_genres:
-            print(genre)
+            # print(genre)
             if genre == "hip-hop":
                 mood_genre.append("hiphop")
             else:
