@@ -2,7 +2,7 @@ import pymongo
 # from passlib.context import CryptContext
 
 
-db_client = pymongo.MongoClient("mongodb://mongo:mongo@10.9.0.9:27017/")
+db_client = pymongo.MongoClient("mongodb://10.9.0.9:27017/")
 db_name = db_client["moodsick_db"]
 
 

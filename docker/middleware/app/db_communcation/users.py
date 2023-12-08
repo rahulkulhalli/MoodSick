@@ -329,15 +329,15 @@ async def get_user_data(user_id):
 
 async def save_user_recommendations_based_on_mood(user_id, user_mood, recommendations):
     # print(recommendations)
-    current_mood_recommendations = collection.users.find_one({"_id": ObjectId(user_id)}, {f"recommendations.{user_mood}"})
+    current_mood_recommendations = collection.users.find_one({"_id": ObjectId(user_id)}, {f"recommendations"})
     
-    if current_mood_recommendations.get("recommendations") is None:
+    if current_mood_recommendations is None or current_mood_recommendations.get("recommendations", {}).get(user_mood) is None:
         collection.users.update_one({"_id": ObjectId(user_id)}, {"$set": {f"recommendations.{user_mood}": recommendations}})
     else:
         previous_average = current_mood_recommendations.get("recommendations").get(user_mood)
         new_average_params = {}
         for key, value in recommendations.items():
-            new_average_params[key] = (previous_average.get(key) + value) / 2
+            new_average_params[key] = (previous_average.get(key,0) + value) / 2
         collection.users.update_one({"_id": ObjectId(user_id)}, {"$set": {f"recommendations.{user_mood}": new_average_params}})
 
     return {"status": "Ok"}

@@ -68,20 +68,23 @@ async def get_spotify_and_user_preferences(user_mood,request: SpotifyRecommendat
     else:
         moodsick_playlist_uri = SpotifyPlaylist.AGE_50_60.value
     
+    print("Inside main spotify call")
 
     user_playlist_data = await get_user_tracks(user_id)
+    print("1")
     # print(user_playlist_data)
     if len(user_playlist_data) == 0:
+         print("2")
          await get_user_audio_preferance(user_id)
 
     recommendations_task = get_spotify_recommendations(user_mood, request)
     user_preference_task = get_songs_based_on_audio_preferance(user_id, request)
-    
     results = await gather(recommendations_task, user_preference_task)
+    user_playlist_uri = await get_user_playlist_uri(user_id)
     return {
         "recommendations": results[0],
         "data_mined_songs": set(results[1]),
-        "moodsick_playlist_uri": "spotify:playlist:" + moodsick_playlist_uri
+        "moodsick_playlist_uri": user_playlist_uri
     }
 
 # @router.post("/spotify-recommendations")
@@ -149,10 +152,10 @@ async def get_spotify_recommendations(user_mood, request: SpotifyRecommendationI
         # Sort the tracks based on popularity
         sorted_uris = sorted(track_uris, key=track_uris.get, reverse=True)
         # Get top 5 tracks
-        popular_songs = sorted_uris[:5]
+        popular_songs = sorted_uris[:6]
         
         # Choose 5 random tracks
-        track_uris = np.random.choice(list(track_uris.keys()), 5, replace=False).tolist()
+        track_uris = np.random.choice(list(track_uris.keys()), 6, replace=False).tolist()
 
         analysis_tracks = popular_songs + track_uris
         analysis_tracks = [uri.split(":")[-1] for uri in analysis_tracks]
@@ -479,10 +482,10 @@ async def get_songs_based_on_audio_preferance(user_id, request: SpotifyRecommend
                     hits_dict.append("tempo")
                 print(f"Hits:::::::::::::::::::::::::::::::::::{hits}")
                 len_dict = len(hits_dict)
-                if hits >= 6 and len_dict >= 6:
+                if hits >= 4 and len_dict >= 4:
                     track_uris.append(track_info["uri"])
                     count += 1
-                    if count >= 5:
+                    if count >= 6:
                         found = True
                         break
 

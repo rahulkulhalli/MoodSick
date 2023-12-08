@@ -1,8 +1,9 @@
 <template>
   <div class="splash-screen">
     <div class="spinner-wrapper">
-      <h5>{{ user_message }}</h5>
-      <div class="spinner"></div>
+      <h5 class="">{{ user_message }}</h5>
+      <!-- <div class="spinner"></div> -->
+      <img src="/moodsick_logo.png" alt="" class="spinner">
     </div>
   </div>
 </template>
@@ -32,19 +33,24 @@ export default {
   left: 50%;
   top: 50%;
 
-  transform: translate(-50%, -50%);
+  transform: translate(-60%, -65%);
 }
 .spinner {
   width: 80px;
   height: 80px;
-  margin: 100px auto;
-  background-color: #e45447;
+  margin: 100px 270px;
+  background-image: url(/moodsick_logo.png);
 
   border-radius: 100%;
-  -webkit-animation: sk-scaleout 1s infinite ease-in-out;
-  animation: sk-scaleout 1s infinite ease-in-out;
+  -webkit-animation: sk-scaleout 3s infinite ease-in-out;
+  animation: sk-scaleout 3s infinite ease-in-out;
 }
 
+
+.message-user{
+  -webkit-animation: sk-scaleout 1s infinite ease-in-out;
+  animation: sk-scaleout 2s infinite ease-in-out;
+}
 @-webkit-keyframes sk-scaleout {
   0% {
     -webkit-transform: scale(0);

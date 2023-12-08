@@ -4,7 +4,15 @@
       <div class="col-md-6 col-lg-4 mt-5">
         <div class="card shadow">
           <div class="card-body">
-            <h3 class="text-center mb-4">Login</h3>
+            <div class="text-center">
+              <img
+                src="/moodsick_logo.png"
+                alt=""
+                style="text-align: center; max-height: 30vh; max-width: 10vw"
+              />
+            </div>
+            <hr>
+              <h3 class="text-center mb-4">Login</h3>
             <form @submit.prevent="login">
               <div class="mb-3">
                 <label for="email" class="form-label">Email address</label>
@@ -72,8 +80,11 @@ export default {
         }
         const responseData = await response.json();
         if (responseData.message == "Login Successful") {
-          sessionStorage.setItem("user_data", JSON.stringify(responseData.user_data))
-          this.$router.push('/')
+          sessionStorage.setItem(
+            "user_data",
+            JSON.stringify(responseData.user_data)
+          );
+          this.$router.push("/");
         } else if (responseData.message == "Invalid Credentials") {
           alert("Some Error Occurred! Pleaser Try Again!");
         } else {

@@ -4,7 +4,15 @@
       <div class="col-md-6 col-lg-4 mt-5">
         <div class="card shadow">
           <div class="card-body">
-            <h3 class="text-center mb-4">Register</h3>
+            <div class="text-center">
+              <img
+                src="/moodsick_logo.png"
+                alt=""
+                style="text-align: center; max-height: 25vh; max-width: 10vw"
+              />
+            </div>
+            <hr>
+            <h3 class="text-center mb-2`">Register</h3>
             <form @submit.prevent="register">
               <div class="mb-3">
                 <label for="email" class="form-label">Your Name</label>

@@ -41,6 +41,7 @@ export default {
           throw new Error("Failed to Login");
         }
         const responseData = await response.json();
+        console.log(responseData);
         if (responseData.message == "User Authorization Successful") {
           let user_data = JSON.parse(sessionStorage.getItem("user_data"));
           user_data["spotify_logged_in"] = true;

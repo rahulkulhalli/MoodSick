@@ -98,7 +98,6 @@ export default {
         "/music_image_2.jpg",
         "/music_image_3.jpg"
       ],
-      getMusicImage:  "/music_image_1.jpg"
     };
   },
   created() {
@@ -115,6 +114,9 @@ export default {
     fancyTimeFormat: function (s) {
       return (s - (s %= 60)) / 60 + (9 < s ? ":" : ":0") + s;
     },
+    getMusicImage(){
+      return `/${this.getImageFromGenre(this.musicPlaylist[this.currentSong].url)}-logo.png`;
+    }
   },
   methods: {
     playPause() {
@@ -148,8 +150,7 @@ export default {
       this.isPlaylistActive = !this.isPlaylistActive;
     },
     changeBgImage(){
-      this.getMusicImage = this.bgImages[Math.floor(Math.random()*this.bgImages.length)];
-      // document.getElementById("playerAlbumArt").src = this.bgImages[Math.floor(Math.random()*this.bgImages.length)];
+      // this.getMusicImage = `/${this.getImageFromGenre(this.musicPlaylist[this.currentSong].url)}-logo.png`;
     },
     nextSong: function () {
       this.changeBgImage()
@@ -257,6 +258,10 @@ export default {
       }, this.currentSong == this.totalSongs-1);
       this.nextSong();
     },
+    getImageFromGenre(x){
+      return x.substr(x.lastIndexOf("/")+1, x.length).substr(0, x.substr(x.lastIndexOf("/")+1, x.length).indexOf("."))
+
+    }
   },
   watch: {
     currentTime: function () {

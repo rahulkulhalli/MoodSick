@@ -6,7 +6,15 @@
   </ClientOnly>
 </template>
 
+<script setup>
+definePageMeta({
+  colorMode: 'dark',
+
+})
+</script>
 <script>
+
+
 export default {
   data() {
     return {

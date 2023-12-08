@@ -64,7 +64,8 @@ async def get(response: Request):
         "mood": mood
     }
     response_data = await get_songs_for_user(request_data_dict)
-    # print(list(response_data))
+    print(list(response_data))
+
     response_data = [(f"http://10.9.0.6/static/{song.get('songs').get('filename')}") for song in response_data]
     # print(response_data)
 
@@ -98,7 +99,7 @@ async def get_recommendations_for_user(request: Request):
     response["sort_by_popularity"] = False
     # print(response, type(response))
     model_params = SpotifyRecommendationInput.parse_obj(response)
-    data = await get_spotify_and_user_preferences(model_params)
+    data = await get_spotify_and_user_preferences(mood, model_params)
     return {"data": data}
 
 # This API is to get and generate data for user dashboard
@@ -142,7 +143,7 @@ async def get_user_spotify_token(user_id):
     token_data = {
         "grant_type": "authorization_code",
         "code": user_authorization_code,
-        "redirect_uri": "http://localhost:8080/user/callback"
+        "redirect_uri": "http://localhost:3000/SpotifyCallback"
     }
 
     async with AsyncClient() as client:

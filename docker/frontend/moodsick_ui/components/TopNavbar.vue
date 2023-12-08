@@ -1,8 +1,26 @@
 <template>
+    <div class="navbar-class">
   <div class="container">
-    <div class="row mt-2">
-      <div class="col-sm-12 d-flex">
-        <h4> Welcome {{ user_name }} </h4>
+    <div class="row">
+      <div class="col-sm-12 d-flex my-2">
+          <h5 class=" my-auto" style="color: whitesmoke;"> Welcome  <em> {{ user_name }} </em><span class="pl-3"> 🤓</span></h5>
+        <img src="/moodsick_logo.png" alt="" style="margin-left: auto;max-height: 100%;max-width: 10vw;">
+        <button
+          class="btn btn-danger my-auto"
+          style="margin-left: auto; max-height: fit-content;"
+          @click="logoutAccount"
+        >
+          Logout
+        </button>
+      </div>
+    </div>
+    </div>
+  </div>
+  <!-- <nav class="navbar navbar-light bg-light">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="#">
+      <img src="/moodsick_logo.png" alt="" width="65" height="65" class="d-inline-block align-text-top">
+        <h4 class="ml-2 mt-3 text-center d-inline-block" style="margin-left: auto;"> Welcome {{ user_name }} </h4>
         <button
           class="btn btn-danger"
           style="margin-left: auto"
@@ -10,9 +28,9 @@
         >
           Logout
         </button>
-      </div>
-    </div>
-  </div>
+    </a>
+  </div> -->
+<!-- </nav> -->
 </template>
 
 <script>
@@ -36,5 +54,9 @@ export default {
 };
 </script>
 
-<style>
+<style scoped>
+.navbar-class {
+    background-image: linear-gradient(to right, #000000, #465362)
+
+}
 </style>
