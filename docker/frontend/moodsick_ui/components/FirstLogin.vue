@@ -28,20 +28,27 @@
             ></button>
           </div>
           <div class="modal-body">
-            <h5>Answer some questions to help us understand to better</h5>
+            <h4>Answer some questions to help us understand to better</h4>
 
-            <div v-for="(mood, index) in moods" :key="index">
-              <span
-                >{{ index + 1 }}) When you are feeling {{ mood }}, what kind of
-                music do you feel listening to?</span
+            <div v-for="(mood, index) in moods" :key="index" class="mt-5">
+              <h5>
+                  {{ index + 1 }}) When you are feeling {{ mood }}, what kind of
+                  music do you feel listening to? (Select Max 5!!!!!!!!!!!!!!!!!!)
+                </h5
               >
-              <div v-for="(genre, genre_index) in genres" :key="genre_index">
-                <input
-                  type="checkbox"
-                  :id="genre"
-                  @change="update_setting(mood, genre)"
-                />
-                <label :for="genre">{{ genre }}</label>
+              <div class="checkbox-container">
+                <div
+                  v-for="(genre, genre_index) in genres"
+                  :key="genre_index"
+                  class="checkbox-item"
+                >
+                  <input
+                    type="checkbox"
+                    :id="genre"
+                    @change="update_setting(mood, genre)"
+                  />
+                  <label :for="genre" style="margin-left: 1rem;">{{ genre }}</label>
+                </div>
               </div>
             </div>
             <div>
@@ -108,6 +115,11 @@ export default {
       modal.hide();
     },
     update_setting(mood, genre) {
+      // console.log(Object.values(this.user_responses[mood]));
+      // if(this.user_responses[mood].length > 4){
+      //   alert("Select Only 5 per Mood RAHUL!!!!!!!!!!!!");
+      //   return false;
+      // }
       if (genre in this.user_responses[mood]) {
         this.user_responses[mood].filter((e) => e !== mood);
       } else {
@@ -160,7 +172,10 @@ export default {
         const responseData = await response.json();
 
         if (responseData.Status == true) {
-            this.$router.push("/NewFlow")
+          let user_data = JSON.parse(sessionStorage.getItem("user_data"));
+          user_data["login_history"] = [true];
+          sessionStorage.setItem("user_data", JSON.stringify(user_data));
+          await this.$router.go();
         }
         console.log(responseData);
       } catch (error) {
@@ -173,6 +188,15 @@ export default {
 </script>
   
 <style scoped>
+.checkbox-container {
+  display: flex;
+  flex-wrap: wrap;
+}
+.checkbox-item {
+  width: 50%;
+  box-sizing: border-box; /* To handle padding and borders */
+}
+
 .btn-smile {
   font-size: 36px;
   margin: 10px;

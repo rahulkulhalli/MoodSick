@@ -1,17 +1,6 @@
 <template>
   <main class="audioPlayer" id="app">
     <div class="audioPlayerList" :class="{ isActive: isPlaylistActive }">
-      <!-- <div
-        class="item"
-        v-for="(item, index) in musicPlaylist"
-        v-bind:class="{ isActive: isCurrentSong(index) }"
-        v-on:click="changeSong(index), (isPlaylistActive = !isPlaylistActive)"
-        :key="index"
-      >
-        <p class="title">{{ item.title }}</p>
-        <p class="artist">{{ item.artist }}</p>
-      </div> -->
-
       <p class="debugToggle" v-on:click="toggleDebug()">debug: {{ debug }}</p>
     </div>
     <div class="audioPlayerUI" :class="{ isDisabled: isPlaylistActive }">
@@ -25,7 +14,7 @@
         >
           <img
             @load="onImageLoaded()"
-            src="/music_image.jpg"
+            :src="getMusicImage"
             :key="currentSong"
             ondragstart="return false;"
             id="playerAlbumArt"
@@ -103,7 +92,12 @@ export default {
       debug: false,
       musicPlaylist: [],
       audioFile: "",
-      totalSongs: 0
+      totalSongs: 0,
+      bgImages: [
+        "/music_image_1.jpg",
+        "/music_image_2.jpg",
+        "/music_image_3.jpg"
+      ],
     };
   },
   created() {
@@ -120,6 +114,9 @@ export default {
     fancyTimeFormat: function (s) {
       return (s - (s %= 60)) / 60 + (9 < s ? ":" : ":0") + s;
     },
+    getMusicImage(){
+      return `/${this.getImageFromGenre(this.musicPlaylist[this.currentSong].url)}-logo.png`;
+    }
   },
   methods: {
     playPause() {
@@ -152,7 +149,11 @@ export default {
     togglePlaylist: function () {
       this.isPlaylistActive = !this.isPlaylistActive;
     },
+    changeBgImage(){
+      // this.getMusicImage = `/${this.getImageFromGenre(this.musicPlaylist[this.currentSong].url)}-logo.png`;
+    },
     nextSong: function () {
+      this.changeBgImage()
       if (this.rating == 0) {
         alert("Please select a rating!!!");
         return;
@@ -257,6 +258,10 @@ export default {
       }, this.currentSong == this.totalSongs-1);
       this.nextSong();
     },
+    getImageFromGenre(x){
+      return x.substr(x.lastIndexOf("/")+1, x.length).substr(0, x.substr(x.lastIndexOf("/")+1, x.length).indexOf("."))
+
+    }
   },
   watch: {
     currentTime: function () {

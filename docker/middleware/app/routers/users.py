@@ -1,8 +1,8 @@
 import os
 from typing import List
+from app.db_communcation.users import create_user, login_user, save_user_mood_maping, get_genres_from_mood, save_model_response_data, save_user_ratings
 
 import pandas as pd
-from app.db_communcation.users import create_user, login_user, save_user_mood_maping, get_genres_from_mood
 from app.models.users import UserData, UserPreferences, SpotifyParams
 from app.models.spotify_communication import SpotifyRecommendationInput
 from fastapi import HTTPException, APIRouter, Request
@@ -38,7 +38,7 @@ router = APIRouter()
 @router.post("/login", tags=["users"])
 async def login(creds: UserData):
     result = await login_user(creds)
-    print(result)
+    # print(result)
     response = json.loads(json_util.dumps(result))
     return response
 
@@ -65,8 +65,9 @@ async def get(response: Request):
     }
     response_data = await get_songs_for_user(request_data_dict)
     print(list(response_data))
+
     response_data = [(f"http://10.9.0.6/static/{song.get('songs').get('filename')}") for song in response_data]
-    print(response_data)
+    # print(response_data)
 
     return response_data
 
@@ -83,19 +84,22 @@ async def get_recommendations_for_user(request: Request):
             'rating': each["rating"]
         })
     url = "http://10.9.0.8/get-recommendation-params"
-    print("input", input)
+    # print("input", input)
+    inserted_mood_flow_id = await save_user_ratings(input)
+    print("inserted_mood_flow_id", inserted_mood_flow_id)
     response = requests.post(url, data=json.dumps(input))
     response = response.json()
     user_id = request.get("user_id", "656f7c14d74f3263c8d44cd0")
+    await save_model_response_data(response, user_id, mood, inserted_mood_flow_id)
     genres = await get_genres_from_mood(mood, user_id)
     response = response["message"]["params"]
     response["genre"] = ",".join([i for i in genres])
     response["user_id"] = user_id
     response["market"] = "US"
     response["sort_by_popularity"] = False
-    print(response, type(response))
+    # print(response, type(response))
     model_params = SpotifyRecommendationInput.parse_obj(response)
-    data = await get_spotify_and_user_preferences(model_params)
+    data = await get_spotify_and_user_preferences(mood, model_params)
     return {"data": data}
 
 # This API is to get and generate data for user dashboard
@@ -125,7 +129,7 @@ async def get_user_dashboard(request: Request):
 # This function is used to get the token from spotify
 async def get_user_spotify_token(user_id):
     user_authorization_code = await get_user_authorization_code(user_id)
-    print(user_authorization_code)
+    # print(user_authorization_code)
     user_refresh_token = await get_user_refresh_token(user_id)
     # if user_authorization_code is None:
     #     raise HTTPException(status_code=401, detail="User not authorized")
@@ -139,20 +143,21 @@ async def get_user_spotify_token(user_id):
     token_data = {
         "grant_type": "authorization_code",
         "code": user_authorization_code,
-        "redirect_uri": "http://localhost:8080/user/callback"
+        "redirect_uri": "http://localhost:3000/SpotifyCallback"
     }
 
     async with AsyncClient() as client:
         token_response = await client.post(url, data=token_data, headers=token_headers)
-        print(token_response.json())
+        # print(token_response.json())
         if user_refresh_token is None or token_response.status_code == 200:
             access_token = token_response.json().get("access_token")
             new_user_refresh_token = token_response.json().get("refresh_token")
-            print(f"Refresh token: {new_user_refresh_token}")
+            # print(f"Refresh token: {new_user_refresh_token}")
             await save_user_refresh_token(user_id, new_user_refresh_token)
             return access_token
         
         if user_refresh_token:
+            # print("user_refresh_token", user_refresh_token)
             new_access_token = await get_refresh_token(user_refresh_token)
             return new_access_token
 
@@ -176,10 +181,10 @@ async def get_refresh_token(refreshToken):
         return new_access_token
     
 
-@router.get("/user-auth-url")
+@router.post("/user-auth-url")
 async def create_auth_url(request: Request):
     request = await request.json()
-    print(request)
+    # print(request)
     base_url = "https://accounts.spotify.com/authorize"
     params = {
         "client_id": spotify_client_id,
@@ -189,9 +194,9 @@ async def create_auth_url(request: Request):
         "state": request.get("user_id")
     }
     get_token_url = f"{base_url}?{urllib.parse.urlencode(params)}"
-    return get_token_url
+    return {"url": get_token_url}
 
-@router.get("/save-user-auth-code")
+@router.post("/save-user-auth-code")
 async def callback(request: Request):
     request = await request.json()
     user_id = request.get("user_id")

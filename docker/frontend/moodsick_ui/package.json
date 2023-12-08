@@ -7,10 +7,12 @@
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "postinstall": "nuxt prepare",
+    "start": "nuxt start"
   },
   "devDependencies": {
     "@nuxt/devtools": "latest",
+    "@nuxtjs/color-mode": "^3.3.2",
     "nuxt": "^3.8.2",
     "sass": "^1.69.5",
     "vue": "^3.3.8",
