@@ -21,6 +21,7 @@ class users(BaseModel):
     age : int
     username : str
     password : str
+    mood : str
     login_history : List[UserInputDetails] = Field(default_factory=list)
     def add_login_history(self, login_time: datetime):
         login_event = login_history(login_time=login_time)
