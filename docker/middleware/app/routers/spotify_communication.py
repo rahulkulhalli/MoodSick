@@ -308,7 +308,7 @@ async def get_user_audio_preferance(user_id):
         'Authorization': f"Bearer {user_token}"
     }
     data = {
-        "limit": 20, # hard limit of 20 playlists. Spotify allows upto 50 playlists.
+        "limit": 50, #Spotify allows upto 50 playlists.
         "offset": 0
     }
     async with AsyncClient() as client:
@@ -367,8 +367,13 @@ async def get_songs_based_on_audio_preferance(user_id, request: SpotifyRecommend
 
     # user_token = await users.get_user_spotify_token()
     user_track_audio_features = await get_track_audio_preferances(user_id)
-    # print(f"Inside get songs based on audio preferance{user_track_audio_features}")
     track_uris = []
+    count = 0
+    min_multiplier = 1.0
+    max_multiplier = 1.0
+    increment = 0.05
+    found = False
+    #
     # Get the track uris based on the audio features The dict is in the format  [{'uri':
     # 'spotify:track:1qIAqSCPcRkkNU8dj5pIOC', 'acousticness': 0.00548, 'danceability': 0.459, 'duration_ms':
     # 231013.0, 'energy': 0.629, 'instrumentalness': 0.0, 'key': 10, 'liveness': 0.35, 'loudness': -5.492, 'mode': 1,
@@ -376,21 +381,55 @@ async def get_songs_based_on_audio_preferance(user_id, request: SpotifyRecommend
     # {'uri': 'spotify:track:5ve0BYRZZ2aoHFqZMxqYgt', 'acousticness': 0.0083, 'danceability': 0.607, 'duration_ms':
     # 232467.0, 'energy': 0.619, 'instrumentalness': 0.0, 'key': 1, 'liveness': 0.366, 'loudness': -5.761, 'mode': 0,
     # 'speechiness': 0.038, 'tempo': 79.998, 'time_signature': 4, 'valence': 0.5}]
-    for track_info in user_track_audio_features:
-        if all(
+    
+    while not found and min_multiplier >= 0.1 and max_multiplier <= 1.9:
+        # print(min_multiplier, max_multiplier)
+        for track_info in user_track_audio_features: 
+            if all(
                 key in track_info
-                for key in ["danceability", "energy", "loudness", "uri"]
-        ):
-            print(track_info)
-            if (
-                    request.min_danceability <= track_info["danceability"] <= request.max_danceability
-                    and request.min_energy <= track_info["energy"] <= request.max_energy
-                    and request.min_loudness <= track_info["loudness"] <= request.max_loudness
+                for key in ["danceability", "energy", "loudness", "uri", "acousticness",
+                            "instrumentalness", "liveness", "speechiness", "tempo", "valence"]
             ):
-                track_uris.append(track_info["uri"])
-        else:
-            # Handle the case where one or more keys are missing in the dictionary
-            # You can log a warning or handle it as per your application logic
-            pass
+                hits = 0
+                hits_dict = []
+                if min_multiplier * request.min_danceability <= track_info["danceability"] <= request.max_danceability * max_multiplier:
+                    hits += 1
+                    hits_dict.append("danceability")
+                if min_multiplier * request.min_energy <= track_info["energy"] <= request.max_energy * max_multiplier:
+                    hits += 1
+                    hits_dict.append("energy")
+                if min_multiplier * request.min_loudness <= track_info["loudness"] <= request.max_loudness * max_multiplier:
+                    hits += 1
+                    hits_dict.append("loudness")
+                if min_multiplier * request.min_speechiness <= track_info["speechiness"] <= request.max_speechiness * max_multiplier:
+                    hits += 1
+                    hits_dict.append("speechiness")
+                if min_multiplier * request.min_acousticness <= track_info["acousticness"] <= request.max_acousticness * max_multiplier:
+                    hits += 1
+                    hits_dict.append("acousticness")
+                if min_multiplier * request.min_instrumentalness <= track_info["instrumentalness"] <= request.max_instrumentalness * max_multiplier:
+                    hits += 1
+                    hits_dict.append("instrumentalness")
+                if min_multiplier * request.min_liveness <= track_info["liveness"] <= request.max_liveness * max_multiplier:
+                    hits += 1
+                    hits_dict.append("liveness")
+                if min_multiplier * request.min_valence <= track_info["valence"] <= request.max_valence * max_multiplier:
+                    hits += 1
+                    hits_dict.append("valence")
+                if min_multiplier * request.min_tempo <= track_info["tempo"] <= request.max_tempo * max_multiplier:
+                    hits += 1
+                    hits_dict.append("tempo")
+                print(f"Hits:::::::::::::::::::::::::::::::::::{hits}")
+                len_dict = len(hits_dict)
+                if hits >= 6 and len_dict >= 6:
+                    track_uris.append(track_info["uri"])
+                    count += 1
+                    if count >= 5:
+                        found = True
+                        break
+
+            if not found:
+                min_multiplier -= increment
+                max_multiplier += increment
 
     return track_uris
