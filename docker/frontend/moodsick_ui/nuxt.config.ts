@@ -4,15 +4,12 @@ export default defineNuxtConfig({
   css: [
     'bootstrap/dist/css/bootstrap.css'
   ],
-  $meta: {
+  modules: ['@nuxtjs/color-mode'],
+  app: {
     head: {
-      // script: [
-      //   {
-      //     src: 'https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js'
-      //   },
-      // ],
-      // ... other head properties
+      
+      script: [{ src: 'https://open.spotify.com/embed/iframe-api/v1' }, {src: 'https://cdn.jsdelivr.net/github-cards/latest/widget.js'}],
     },
-  }
+  },
  
 })

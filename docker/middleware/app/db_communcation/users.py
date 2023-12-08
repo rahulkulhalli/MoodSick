@@ -1,3 +1,5 @@
+from app.models.users import UserAudioPreferance
+from bson import ObjectId
 import random
 from app.models.users import UserData, UserPreferences
 from . import db_name as collection
@@ -5,9 +7,6 @@ from passlib.context import CryptContext
 import traceback
 from datetime import datetime
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-from bson import ObjectId
-from app.models.users import UserAudioPreferance 
-
 
 
 async def create_user(user: UserData):
@@ -18,7 +17,7 @@ async def create_user(user: UserData):
             return "Already Exists"
         hashed_password = pwd_context.hash(user.password)
         user.password = hashed_password
-        user.login_history = []
+        user.login_history = list()
         collection.users.insert_one(dict(user))
         return True
     except Exception as e:
@@ -58,6 +57,7 @@ def insert_login_record(email):
         print("Error in  insert_login_record", e)
         print(traceback.format_exc())
 
+
 """
 Assume user has completed mapping.
 Assumption: We limit mood:genre mappings to a max of 5.
@@ -76,6 +76,7 @@ On n=1+ flow,
     - if 5, then 5
 """
 
+
 async def get_songs_for_user(request_data_dict: dict):
     print(request_data_dict)
     mood = request_data_dict.get("mood")
@@ -92,6 +93,7 @@ async def get_songs_for_user(request_data_dict: dict):
                 mood_genre.append(genre)
         user_mood_genres = mood_genre
         length = len(user_mood_genres)
+        print(length)
         if length == 1:
             #['rock'] then select 5 songs from rock according to the least number of times played
             songs = collection.songs.aggregate([
@@ -105,11 +107,12 @@ async def get_songs_for_user(request_data_dict: dict):
             songs = list(songs)
             for song in songs:
                 song_id = song.get("songs").get("_id")
-                collection.songs.update_one({"_id": song_id}, {"$inc": {"number_of_times_played": 1}})
+                collection.songs.update_one(
+                    {"_id": song_id}, {"$inc": {"number_of_times_played": 1}})
             print(songs)
-            return songs
+            return list(songs)
         elif length == 2:
-            #['rock', "jazz"] then select 2 songs from each genre according to the least number of times played
+            # ['rock', "jazz"] then select 2 songs from each genre according to the least number of times played
             songs = collection.songs.aggregate([
                 {"$match": {"genre": {"$in": user_mood_genres}}},
                 {"$sort": {"number_of_times_played": 1}},
@@ -122,19 +125,20 @@ async def get_songs_for_user(request_data_dict: dict):
             print(songs)
             for song in songs:
                 song_id = song.get("songs").get("_id")
-                collection.songs.update_one({"_id": song_id}, {"$inc": {"number_of_times_played": 1}})
+                collection.songs.update_one(
+                    {"_id": song_id}, {"$inc": {"number_of_times_played": 1}})
             return songs
         elif length == 3:
             songs = collection.songs.aggregate([
                 {"$match": {"genre": {"$in": user_mood_genres}}},
                 {"$sort": {"number_of_times_played": 1}},
                 {"$group": {"_id": "$genre", "songs": {"$push": "$$ROOT"}}},
-                {"$project": {"songs": {"$slice": ["$songs", 2]}}}, 
+                {"$project": {"songs": {"$slice": ["$songs", 2]}}},
                 {"$unwind": "$songs"},
-                {"$limit": 6} 
+                {"$limit": 6}
             ])
             songs = list(songs)
-            # print(songs)
+            print(songs)
             for song in songs:
                 song_id = song.get("songs").get("_id")
                 collection.songs.update_one({"_id": song_id}, {"$inc": {"number_of_times_played": 1}})
@@ -151,7 +155,8 @@ async def get_songs_for_user(request_data_dict: dict):
             songs = list(songs)
             for song in songs:
                 song_id = song.get("songs").get("_id")
-                collection.songs.update_one({"_id": song_id}, {"$inc": {"number_of_times_played": 1}})
+                collection.songs.update_one(
+                    {"_id": song_id}, {"$inc": {"number_of_times_played": 1}})
             return songs
         elif length == 5:
             songs = collection.songs.aggregate([
@@ -165,13 +170,47 @@ async def get_songs_for_user(request_data_dict: dict):
             songs = list(songs)
             for song in songs:
                 song_id = song.get("songs").get("_id")
-                collection.songs.update_one({"_id": song_id}, {"$inc": {"number_of_times_played": 1}})
+                collection.songs.update_one(
+                    {"_id": song_id}, {"$inc": {"number_of_times_played": 1}})
             return songs
-        
+
     except Exception as e:
         print("Error in  get_songs_for_user", e)
         print(traceback.format_exc())
         return []
+
+
+async def save_model_response_data(response, user_id, mood, inserted_mood_flow_id):
+    update = collection.flow_history.update_one({"_id": ObjectId(inserted_mood_flow_id)}, {
+        "$set": {
+            "user_id": user_id,
+            "model_output": response,
+            "mood": mood
+        }
+    })
+
+
+async def save_user_ratings(input):
+    _insert = collection.flow_history.insert_one({"user_input": input})
+    inserted_id = _insert.inserted_id
+    return inserted_id
+#      "mood_preferences": {
+#     "Very Happy": [
+#       "rock"
+#     ],
+#     "Happy": [],
+#     "Neutral": [],
+#     "Sad": [
+#       "hip-hop",
+#       "blues",
+#       "rock"
+#     ],
+#     "Very Sad": [
+#       "classical",
+#       "metal",
+#       "reggae"
+#     ]
+#   }
 
 
 async def get_user_mood_genres(user_id, mood):
@@ -209,47 +248,53 @@ def transform_preferences_data(preferences: UserPreferences):
     return data
 
 
-async def create_user(user: UserData):
-    _id = collection.users.insert_one(dict(user))
-    # user = users_serializer(collection.find({"_id": _id.inserted_id}))
-    return {"status": "Ok","data": user}
-
 async def save_user_authorization_code(user_id, authorization_code):
     print(user_id)
     print(authorization_code)
-    collection.users.update_one({"_id": ObjectId(user_id)}, {"$set": {"authorization_code": authorization_code}})
+    collection.users.update_one({"_id": ObjectId(user_id)}, {
+                                "$set": {"authorization_code": authorization_code}})
     return {"status": "Ok"}
 
+
 async def save_user_refresh_token(user_id, refresh_token):
-    collection.users.update_one({"_id": ObjectId(user_id)}, {"$set": {"refresh_token": refresh_token}})
+    collection.users.update_one({"_id": ObjectId(user_id)}, {
+                                "$set": {"refresh_token": refresh_token}})
     return {"status": "Ok"}
+
 
 async def get_user_authorization_code(user_id):
     user = collection.users.find_one({"_id": ObjectId(user_id)})
     return user.get("authorization_code")
 
+
 async def get_user_refresh_token(user_id):
-    print(user_id)
+    # print(user_id)
     user = collection.users.find_one({"_id": ObjectId(user_id)})
     return user.get("refresh_token")
+
 
 async def get_user_age(user_id):
     user_age = collection.users.find_one({"_id": ObjectId(user_id)})
     return user_age.get("age")
+
 
 async def save_user_playlist_uri(user_id, user_playlist_uri):
     # print("Saved User Playlist")
     collection.users.update_one({"_id": ObjectId(user_id)}, {"$set": {"user_playlist_uri": user_playlist_uri}})
     return {"status": "Ok"}
 
+
 async def get_user_playlist_uri(user_id):
     user = collection.users.find_one({"_id": ObjectId(user_id)})
     return user.get("user_playlist_uri")
 
+
 async def save_user_audio_preferance(user_id, user_audio_preferance: UserAudioPreferance):
     user_audio_preferance = dict(user_audio_preferance)
-    collection.users.update_one({"_id": ObjectId(user_id)}, {"$set": {"user_audio_preferance": user_audio_preferance}})
+    collection.users.update_one({"_id": ObjectId(user_id)}, {
+                                "$set": {"user_audio_preferance": user_audio_preferance}})
     return {"status": "Ok"}
+
 
 async def get_user_tracks(user_id):
     track = collection.track_features.find_one({"user_id": user_id})
@@ -259,9 +304,11 @@ async def get_user_tracks(user_id):
 
 
 async def get_genres_from_mood(mood, user_id):
-    mood_data = collection.users.find_one({"_id": ObjectId(user_id)}, {"mood_preferences": 1})
+    mood_data = collection.users.find_one(
+        {"_id": ObjectId(user_id)}, {"mood_preferences": 1})
     genres = mood_data.get("mood_preferences")[mood]
     return genres
+
 
 def edit_songs_data():
     # Get all the songs from the database
@@ -282,15 +329,15 @@ async def get_user_data(user_id):
 
 async def save_user_recommendations_based_on_mood(user_id, user_mood, recommendations):
     # print(recommendations)
-    current_mood_recommendations = collection.users.find_one({"_id": ObjectId(user_id)}, {f"recommendations.{user_mood}"})
+    current_mood_recommendations = collection.users.find_one({"_id": ObjectId(user_id)}, {f"recommendations"})
     
-    if current_mood_recommendations.get("recommendations") is None:
+    if current_mood_recommendations is None or current_mood_recommendations.get("recommendations", {}).get(user_mood) is None:
         collection.users.update_one({"_id": ObjectId(user_id)}, {"$set": {f"recommendations.{user_mood}": recommendations}})
     else:
         previous_average = current_mood_recommendations.get("recommendations").get(user_mood)
         new_average_params = {}
         for key, value in recommendations.items():
-            new_average_params[key] = (previous_average.get(key) + value) / 2
+            new_average_params[key] = (previous_average.get(key,0) + value) / 2
         collection.users.update_one({"_id": ObjectId(user_id)}, {"$set": {f"recommendations.{user_mood}": new_average_params}})
 
     return {"status": "Ok"}
