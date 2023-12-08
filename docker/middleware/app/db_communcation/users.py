@@ -82,7 +82,15 @@ async def get_songs_for_user(request_data_dict: dict):
     user_id = request_data_dict.get("user_id")
     try:
         user_mood_genres = await get_user_mood_genres(user_id, mood)
+        mood_genre = []
         print(user_mood_genres)
+        for genre in user_mood_genres:
+            print(genre)
+            if genre == "hip-hop":
+                mood_genre.append("hiphop")
+            else:
+                mood_genre.append(genre)
+        user_mood_genres = mood_genre
         length = len(user_mood_genres)
         if length == 1:
             #['rock'] then select 5 songs from rock according to the least number of times played
