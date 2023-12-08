@@ -326,7 +326,8 @@ async def get_playlist_songs(user_token, playlist_uri):
         responseJson = response.json()
         track_uri = []
         for each in range(len(responseJson["items"])):
-            track_uri.append(responseJson["items"][each]["track"]["id"])
+            if responseJson["items"][each]["track"] is not None and responseJson["items"][each]["track"]["id"] is not None:
+                track_uri.append(responseJson["items"][each]["track"]["id"])
 
         return track_uri
 
