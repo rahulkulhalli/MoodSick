@@ -5,9 +5,14 @@
       <div class="col-sm-12 d-flex my-2">
           <h5 class=" my-auto" style="color: whitesmoke;"> Welcome  <em> {{ user_name }} </em><span class="pl-3"> 🤓</span></h5>
         <img src="/moodsick_logo.png" alt="" style="margin-left: auto;max-height: 100%;max-width: 10vw;">
+        <button class="btn btn-primary  my-auto"
+        style="margin-left: auto; max-height: fit-content;"
+        @click="showStats">
+            Show my Stats
+        </button>
         <button
           class="btn btn-danger my-auto"
-          style="margin-left: auto; max-height: fit-content;"
+          style=" max-height: fit-content;"
           @click="logoutAccount"
         >
           Logout
@@ -50,6 +55,9 @@ export default {
       sessionStorage.removeItem("user_data");
       this.$router.push("/Login");
     },
+    showStats(){
+        this.$router.push("/UserStats");
+    }
   },
 };
 </script>
