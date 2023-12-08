@@ -1,5 +1,5 @@
 <template>
-  <TopNavbar></TopNavbar>
+ 
   <ClientOnly>
     <FirstLogin v-if="login_type == 'first'"></FirstLogin>
     <NewFlow v-else></NewFlow>

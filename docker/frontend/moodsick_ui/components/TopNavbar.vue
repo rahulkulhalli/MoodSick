@@ -7,12 +7,17 @@
         <img src="/moodsick_logo.png" alt="" style="margin-left: auto;max-height: 100%;max-width: 10vw;">
         <button class="btn btn-primary  my-auto"
         style="margin-left: auto; max-height: fit-content;"
-        @click="showStats">
+        @click="showStats" v-if="$route.name!='UserStats'">
             Show my Stats
+        </button>
+        <button class="btn btn-primary  my-auto"
+        style="margin-left: auto; max-height: fit-content;"
+        @click="$router.push('/')" v-if="$route.name=='UserStats'">
+            Home
         </button>
         <button
           class="btn btn-danger my-auto"
-          style=" max-height: fit-content;"
+          style=" max-height: fit-content; margin-left: 1rem;"
           @click="logoutAccount"
         >
           Logout

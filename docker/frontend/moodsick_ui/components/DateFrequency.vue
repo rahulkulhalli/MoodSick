@@ -1,7 +1,7 @@
 <template>
     <div>
-      Hourly Login Description
-      <div id="main" style="height:80vh; width:80vw"></div>
+      Daily Login Description
+      <div id="mainsdjfkhcaskc" style="height:80vh; width: 100%"></div>
     </div>
   </template>
   
@@ -9,17 +9,20 @@
   import * as echarts from 'echarts';
   
   export default {
+  props: ["graphData"],
     mounted() {
       this.$nextTick(() => {
-        var chartDom = document.getElementById('main');
+        var chartDom = document.getElementById('mainsdjfkhcaskc');
         var myChart = echarts.init(chartDom);
         var option;
+        let xAxisData = Object.keys(this.graphData),
+        seriesData = Object.values(this.graphData)
   
         option = {
           xAxis: {
             type: 'category',
             name: 'Hour of the day frequency',
-            data: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23']
+            data: xAxisData
           },
           yAxis: {
             type: 'value',
@@ -28,7 +31,7 @@
   
           series: [
             {
-              data: [2, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 2, 1, 0, 2, 0],
+              data: seriesData,
               type: 'bar'
             }
           ]

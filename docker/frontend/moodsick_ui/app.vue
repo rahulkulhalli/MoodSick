@@ -1,6 +1,7 @@
 <template>
   <div>
     <!-- <NuxtWelcome /> -->
+    <TopNavbar v-if="!['Login','Register'].includes($route.name)"></TopNavbar>
     <NuxtPage />
     <!-- <Login></Login> -->
   </div>
