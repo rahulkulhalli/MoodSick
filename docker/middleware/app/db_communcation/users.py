@@ -82,6 +82,7 @@ async def get_songs_for_user(request_data_dict: dict):
     user_id = request_data_dict.get("user_id")
     try:
         user_mood_genres = await get_user_mood_genres(user_id, mood)
+        print("user_mood_genres", user_mood_genres)
         mood_genre = []
         # print(user_mood_genres)
         for genre in user_mood_genres:
@@ -191,6 +192,8 @@ async def get_user_mood_genres(user_id, mood):
 async def save_user_mood_maping(data: UserPreferences):
     try:
         r_data = transform_preferences_data(data)
+        # for k, v in r_data["mapping"].items():
+        #     r_data["mapping"][k] = set(v)
         collection.users.update_one({"email": r_data["email"]}, {
             "$set": {
                 "mood_preferences": r_data["mapping"]
@@ -207,6 +210,8 @@ def transform_preferences_data(preferences: UserPreferences):
     data = preferences.dict(by_alias=True)
     data['mapping'] = {k.replace('_', ' '): v for k,
                        v in data['mapping'].items()}
+    for k,v in data['mapping'].items():
+        data['mapping'][k] = list(set(v))
     return data
 
 

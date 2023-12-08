@@ -13,7 +13,7 @@ async def save_track_audio_preferances(user_id, spotify_communications: SongFeat
     for feature_list in spotify_communications:
         if isinstance(feature_list, SongFeature):
             all_data.append(feature_list.dict())
-        elif isinstance(feature_list, list) and isinstance(feature_list[0], SongFeature):
+        elif isinstance(feature_list, list) and len(feature_list) > 0 and isinstance(feature_list[0], SongFeature):
             for feature in feature_list:
                 all_data.append(feature.dict())
         else:
