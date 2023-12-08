@@ -42,7 +42,7 @@ async def login_user(user: UserData):
         else:
             return {"message": "Invalid Credentials"}
     except Exception as e:
-        print(traceback.format_exc())
+        # print(traceback.format_exc())
         print("Error while create_user", e)
         return False
 
@@ -240,7 +240,7 @@ async def get_user_age(user_id):
     return user_age.get("age")
 
 async def save_user_playlist_uri(user_id, user_playlist_uri):
-    print("Saved User Playlist")
+    # print("Saved User Playlist")
     collection.users.update_one({"_id": ObjectId(user_id)}, {"$set": {"user_playlist_uri": user_playlist_uri}})
     return {"status": "Ok"}
 
@@ -279,3 +279,18 @@ def edit_songs_data():
 async def get_user_data(user_id):
     user = collection.users.find_one({"_id": ObjectId(user_id)})
     return user
+
+async def save_user_recommendations_based_on_mood(user_id, user_mood, recommendations):
+    # print(recommendations)
+    current_mood_recommendations = collection.users.find_one({"_id": ObjectId(user_id)}, {f"recommendations.{user_mood}"})
+    
+    if current_mood_recommendations.get("recommendations") is None:
+        collection.users.update_one({"_id": ObjectId(user_id)}, {"$set": {f"recommendations.{user_mood}": recommendations}})
+    else:
+        previous_average = current_mood_recommendations.get("recommendations").get(user_mood)
+        new_average_params = {}
+        for key, value in recommendations.items():
+            new_average_params[key] = (previous_average.get(key) + value) / 2
+        collection.users.update_one({"_id": ObjectId(user_id)}, {"$set": {f"recommendations.{user_mood}": new_average_params}})
+
+    return {"status": "Ok"}

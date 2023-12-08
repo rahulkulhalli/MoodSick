@@ -34,16 +34,16 @@ services:
       moodSickNetwork-10.9.0.0:
         ipv4_address: 10.9.0.8
 
-  # frontend:
-  #   build:
-  #     context: ./frontend
-  #     dockerfile: Dockerfile
-  #   tty: true
-  #   ports:
-  #     - 3000:3000
-  #   networks:
-  #     moodSickNetwork-10.9.0.0:
-  #       ipv4_address: 10.9.0.5
+  frontend:
+    build:
+      context: ./frontend/moodsick_ui
+      dockerfile: Dockerfile
+    tty: true
+    ports:
+      - 3000:3000
+    networks:
+      moodSickNetwork-10.9.0.0:
+        ipv4_address: 10.9.0.5
 
   middleware:
     build:
