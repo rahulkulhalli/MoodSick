@@ -1,5 +1,7 @@
 import os
 from typing import List
+
+import pandas as pd
 from app.db_communcation.users import create_user, login_user, save_user_mood_maping, get_genres_from_mood
 from app.models.users import UserData, UserPreferences, SpotifyParams
 from app.models.spotify_communication import SpotifyRecommendationInput
@@ -11,13 +13,19 @@ from pydantic import BaseModel
 import urllib.parse
 import pymongo
 from app import spotify_user_id, spotify_client_id, spotify_client_secret
-from app.db_communcation.users import save_user_refresh_token, get_user_refresh_token, get_user_authorization_code, save_user_authorization_code, get_songs_for_user, get_user_data
+from app.db_communcation.users import (save_user_refresh_token, get_user_refresh_token,
+                                       get_user_authorization_code, save_user_authorization_code,
+                                       get_songs_for_user, get_user_data, get_user_flow_history)
 from app.routers.spotify_communication import get_spotify_and_user_preferences
 # import pymongo
 import requests
+import re
 import json
 from bson import json_util
+from traceback import format_exc
 
+
+pattern = re.compile(r'([a-z]+)\d+')
 router = APIRouter()
 
 # spotify_client_id = os.getenv("SPOTIFY_CLIENT_ID")
@@ -204,3 +212,167 @@ async def callback(request: Request):
 #     collection = db_name["your_collection_name"]
 #     document = collection.find_one({"user_id": user_id})
 #     return document["user_playlist_uri"]
+
+
+@router.post('/viz')
+async def generate_viz(request: Request):
+    """
+
+    A  method to return visualization data to the front-end.
+    The following data will be called from this method:
+        - user login history
+        - user mood mapping dictionary
+        - user rated song history
+        - model generated params for rated songs
+        - spotify hits for rated songs
+        - average params for user
+
+    :param request: the incoming request JSON body.
+    :return: A dictionary of graphing data, each key being the title of the graph.
+    """
+
+    # Global dictionary to hold visualizations.
+    viz_dict = dict()
+
+    try:
+        # Get the JSON body.
+        request = await request.json()
+
+        # Retrieve the user_id.
+        user_id = request.get('user_id')
+
+        # Retrieve user data from the db.
+        user_data = await get_user_data(user_id)
+        flow_history = await get_user_flow_history(user_id)
+
+        # Login history visualizations.
+        if 'login_history' in user_data.keys():
+
+            dow_mapping = {
+                0: "Monday",
+                1: "Tuesday",
+                2: "Wednesday",
+                3: "Thursday",
+                4: "Friday",
+                5: "Saturday",
+                6: "Sunday"
+            }
+
+            login_times = user_data['login_history']
+
+            if isinstance(login_times, list) and len(login_times) > 0:
+
+                viz_dict['login_viz'] = dict()
+
+                # Convert the list into a series and return the
+                login_times = pd.DataFrame(
+                    login_times, columns=['timestamp']
+                ).sort_values(by=['timestamp'], ascending=True, inplace=False)
+
+                # Extract the date.
+                login_times['date'] = login_times.apply(lambda x: x.timestamp.date(), axis=1)
+                # Extract the day of week and map it to a string name.
+                login_times['dow'] = login_times.apply(lambda x: dow_mapping[x.date.weekday()], axis=1)
+                # Get the hour of day.
+                login_times['hod'] = login_times.apply(lambda x: x.timestamp.hour, axis=1)
+
+                viz_dict['login_viz']['date_freq'] = login_times['date'].value_counts().to_dict()
+                viz_dict['login_viz']['hour_of_day_freq'] = login_times['hod'].value_counts().to_dict()
+                viz_dict['login_viz']['day_of_week_freq'] = login_times['dow'].value_counts().to_dict()
+
+        # Mood mapping visualizations.
+        if 'mood_preferences' in user_data.keys():
+            viz_dict['mood_viz'] = dict()
+            counter = dict()
+            genres = [
+                "rock", "hip-hop", "blues", "jazz",
+                "classical", "metal", "reggae", "country", "pop",
+                "disco"
+            ]
+
+            preferences = user_data['mood_preferences']
+
+            for genre in genres:
+                counter[genre] = 0
+                for k in preferences.keys():
+                    if genre in preferences[k]:
+                        counter[genre] += 1
+
+            viz_dict['mood_viz']['genre_frequency'] = counter
+
+        if len(flow_history) > 0:
+
+            agg_flow_dict = dict()
+            agg_input_rating = dict()
+
+            # First, collect.
+            for flow_dict in flow_history:
+
+                # User input aggregate.
+                if 'user_input' in flow_dict.keys():
+                    input_ratings = flow_dict['user_input']
+
+                    # Iterate over the ratings.
+                    for rating_dict in input_ratings:
+                        if ('query' in rating_dict
+                                and 'rating' in rating_dict
+                                and str(rating_dict['rating']).isnumeric()
+                        ):
+                            _genre = re.search(pattern, rating_dict['query'])
+                            if _genre and _genre.group(1) is not None:
+                                genre = _genre.group(1)
+                                rating = int(rating_dict['rating'])
+                                if genre not in agg_input_rating.keys():
+                                    agg_input_rating[genre] = (rating, 1)
+                                else:
+                                    agg_input_rating[genre] = (
+                                        agg_input_rating[genre][0] + rating,
+                                        agg_input_rating[genre][1] + 1
+                                    )
+
+                # Model output aggregate.
+                if 'model_output' in flow_dict.keys() and 'mood' in flow_dict.keys():
+                    mood = flow_dict['mood']
+                    current_model_output = flow_dict['model_output']['message']['params']
+
+                    if mood not in agg_flow_dict:
+                        # We're not concerned with {min, max} now, only {target}.
+                        # Slightly hacky, but create a dummy entry to keep count.
+                        agg_flow_dict[mood] = {k: v for k, v in current_model_output.items() if 'target' in k}
+                        agg_flow_dict[mood]['count'] = 1
+                    else:
+                        agg_flow_dict[mood]['count'] += 1
+                        for k in agg_flow_dict[mood].keys():
+                            if k != 'count':
+                                agg_flow_dict[mood][k] += current_model_output[k]
+
+            # Now, aggregate.
+            for rating in agg_input_rating.keys():
+                agg = agg_input_rating[rating][0] / agg_input_rating[rating][1]
+                agg_input_rating[rating] = agg
+
+            # Now, aggregate
+            for mood_key in agg_flow_dict.keys():
+                for param in agg_flow_dict[mood_key].keys():
+                    if param != 'count':
+                        agg_flow_dict[mood_key][param] = agg_flow_dict[mood_key][param]/agg_flow_dict[mood_key]['count']
+
+            # remove the 'count' key.
+            for mood in agg_flow_dict.keys():
+                agg_flow_dict[mood].pop('count')
+
+            viz_dict['model_param_history'] = agg_flow_dict
+            viz_dict['aggregate_input_ratings'] = agg_input_rating
+
+        if 'recommendations' in user_data.keys():
+            viz_dict['spotify_param_history'] = user_data['recommendations']
+
+        viz_dict['RESPONSE_STATUS'] = "SUCCESS"
+        viz_dict['TRACE'] = None
+
+    except:
+        viz_dict['RESPONSE_STATUS'] = "ERROR"
+        viz_dict['TRACE'] = format_exc()
+
+    finally:
+        return viz_dict

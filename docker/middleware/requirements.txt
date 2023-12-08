@@ -10,3 +10,4 @@ numpy
 pydantic[email]
 passlib[bcrypt]
 aiofiles
+pandas
