@@ -194,4 +194,4 @@ logs
 .env.*
 !.env.example
 
-/mongo/
+/mongo
