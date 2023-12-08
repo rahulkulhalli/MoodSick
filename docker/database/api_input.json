@@ -1,0 +1,42 @@
+{
+  "tracks": [
+    {
+      "album": { "props": 13 },
+      "artists": [{ "name": "artist_name" }],
+      "available_markets": [184],
+      "disc_number": 1,
+      "duration_ms": 312360,
+      "explicit": false,
+      "external_ids": { "prop": "value" },
+      "external_urls": { "prop": "value" },
+      "href": "https://api.spotify.com/v1/tracks/3ovjw5HZZv43SxTwApooCM",
+      "id": "3ovjw5HZZv43SxTwApoo0CM",
+      "is_local": false,
+      "name": "Wind Of Change",
+      "popularity": 81,
+      "preview_url": null,
+      "track_number": 4,
+      "type": "track",
+      "uri": "spotify:track:3ovjw5HZZv43SxTwApooCM"
+    },
+    {
+      "album": { "props": 13 },
+      "artists": [{ "name": "artist_name" }], 
+      "available_markets": [179],
+      "disc_number": 1,
+      "duration_ms": 189796,
+      "explicit": true,
+      "external_ids": { "prop": "value" },
+      "external_urls": { "prop": "value" },
+      "href": "https://api.spotify.com/v1/tracks/02oAUzv4M0ItuTDy2RT3IT",
+      "id": "02oAUzv4M0ItuTDy2RT3IT",
+      "is_local": false,
+      "name": "Homemade Dynamite",
+      "popularity": 63,
+      "preview_url": null,
+      "track_number": 3,
+      "type": "track",
+      "uri": "spotify:track:02oAUzv4M0ItuTDy2RT3IT"
+    }
+  ]
+}

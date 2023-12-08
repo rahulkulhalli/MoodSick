@@ -1,0 +1,130 @@
+[{
+  "_id": {
+    "$oid": "656d04f8e3311ac9a7321fbe"
+  },
+  "firstname": "Caleb",
+  "lastname": "Holland",
+  "age": "21",
+  "credentials": {
+    "username": "bryantkathleen",
+    "password": "*(Y6PVUmX$"
+  },
+  "login_history": []
+},
+{
+  "_id": {
+    "$oid": "656d04f8e3311ac9a7321fbf"
+  },
+  "firstname": "Michael",
+  "lastname": "Glover",
+  "age": "26",
+  "credentials": {
+    "username": "peterquinn",
+    "password": "$+LTdj2Iw4"
+  },
+  "login_history": []
+},
+{
+  "_id": {
+    "$oid": "656d04f8e3311ac9a7321fc0"
+  },
+  "firstname": "Jacob",
+  "lastname": "Daniel",
+  "age": "80",
+  "credentials": {
+    "username": "michael13",
+    "password": "2+6fTtUp0b"
+  },
+  "login_history": []
+},
+{
+  "_id": {
+    "$oid": "656d04f8e3311ac9a7321fc1"
+  },
+  "firstname": "Connie",
+  "lastname": "Green",
+  "age": "33",
+  "credentials": {
+    "username": "elizabeth18",
+    "password": "+eImNd$yY1"
+  },
+  "login_history": []
+},
+{
+  "_id": {
+    "$oid": "656d04f8e3311ac9a7321fc2"
+  },
+  "firstname": "Christopher",
+  "lastname": "Douglas",
+  "age": "58",
+  "credentials": {
+    "username": "williamsrobert",
+    "password": "+X*3c!Uaf1"
+  },
+  "login_history": []
+},
+{
+  "_id": {
+    "$oid": "656d04f8e3311ac9a7321fc3"
+  },
+  "firstname": "Daniel",
+  "lastname": "Brown",
+  "age": "35",
+  "credentials": {
+    "username": "rday",
+    "password": "mT8+5HEaU9"
+  },
+  "login_history": []
+},
+{
+  "_id": {
+    "$oid": "656d04f8e3311ac9a7321fc4"
+  },
+  "firstname": "Nathan",
+  "lastname": "Garcia",
+  "age": "57",
+  "credentials": {
+    "username": "gilljohn",
+    "password": "(5KOTvusPM"
+  },
+  "login_history": []
+},
+{
+  "_id": {
+    "$oid": "656d04f8e3311ac9a7321fc5"
+  },
+  "firstname": "Crystal",
+  "lastname": "Thompson",
+  "age": "67",
+  "credentials": {
+    "username": "thompsonkimberly",
+    "password": "B!8#FRiXFx"
+  },
+  "login_history": []
+},
+{
+  "_id": {
+    "$oid": "656d04f8e3311ac9a7321fc6"
+  },
+  "firstname": "Jeremy",
+  "lastname": "Johnson",
+  "age": "54",
+  "credentials": {
+    "username": "douglasanderson",
+    "password": "@QvVmir55p"
+  },
+  "login_history": []
+},
+{
+  "_id": {
+    "$oid": "656d04f8e3311ac9a7321fc7"
+  },
+  "firstname": "Alison",
+  "lastname": "Perkins",
+  "age": "67",
+  "credentials": {
+    "username": "jnguyen",
+    "password": "j+s+3ZpdyF"
+  },
+  "login_history": []
+}]
