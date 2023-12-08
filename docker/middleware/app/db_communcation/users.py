@@ -174,25 +174,6 @@ async def get_songs_for_user(request_data_dict: dict):
         return []
 
 
-
-#      "mood_preferences": {
-#     "Very Happy": [
-#       "rock"
-#     ],
-#     "Happy": [],
-#     "Neutral": [],
-#     "Sad": [
-#       "hip-hop",
-#       "blues",
-#       "rock"
-#     ],
-#     "Very Sad": [
-#       "classical",
-#       "metal",
-#       "reggae"
-#     ]
-#   }
-
 async def get_user_mood_genres(user_id, mood):
     try:
         print(mood)
@@ -293,9 +274,11 @@ def edit_songs_data():
 
     return {"status": "Ok"}
 
+
 async def get_user_data(user_id):
     user = collection.users.find_one({"_id": ObjectId(user_id)})
     return user
+
 
 async def save_user_recommendations_based_on_mood(user_id, user_mood, recommendations):
     # print(recommendations)
@@ -311,3 +294,9 @@ async def save_user_recommendations_based_on_mood(user_id, user_mood, recommenda
         collection.users.update_one({"_id": ObjectId(user_id)}, {"$set": {f"recommendations.{user_mood}": new_average_params}})
 
     return {"status": "Ok"}
+
+
+async def get_user_flow_history(user_id: str):
+    # Returns a cursor. Convert to list before returning
+    flow_history = collection.flow_history.find({"user_id": user_id})
+    return list(flow_history)

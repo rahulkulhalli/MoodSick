@@ -445,6 +445,7 @@ async def get_songs_based_on_audio_preferance(user_id, request: SpotifyRecommend
                 key in track_info
                 for key in ["danceability", "energy", "loudness", "uri", "acousticness",
                             "instrumentalness", "liveness", "speechiness", "tempo", "valence"]
+
             ):
                 hits = 0
                 hits_dict = []
