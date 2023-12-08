@@ -73,7 +73,7 @@ export default {
         const responseData = await response.json();
         if (responseData.message == "Login Successful") {
           sessionStorage.setItem("user_data", JSON.stringify(responseData.user_data))
-          this.$router.push('/UserDashboard')
+          this.$router.push('/')
         } else if (responseData.message == "Invalid Credentials") {
           alert("Some Error Occurred! Pleaser Try Again!");
         } else {

@@ -9,11 +9,11 @@
               <div class="mb-3">
                 <label for="email" class="form-label">Your Name</label>
                 <input
-                  type="email"
+                  type="text"
                   class="form-control"
                   id="email"
                   v-model="user.name"
-                  placeholder="Enter email"
+                  placeholder="Enter Name"
                   required
                 />
               </div>
@@ -129,8 +129,9 @@ export default {
           throw new Error("Failed to register");
         }
         const responseData = await response.json();
+        console.log("responseData", responseData);
         if (responseData.Status == true) {
-          alert("Success. Please login now");
+          await this.$router.push("/Login")
         } else if (responseData.Status == "Already Exists") {
           alert("Email Already Exists");
         } else if (responseData.Status == false) {

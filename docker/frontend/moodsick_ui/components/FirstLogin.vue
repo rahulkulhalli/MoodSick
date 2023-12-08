@@ -160,7 +160,10 @@ export default {
         const responseData = await response.json();
 
         if (responseData.Status == true) {
-            this.$router.push("/NewFlow")
+          let user_data = JSON.parse(sessionStorage.getItem("user_data"));
+          user_data["login_history"] = [true];
+          sessionStorage.setItem("user_data", JSON.stringify(user_data));
+          await this.$router.go()
         }
         console.log(responseData);
       } catch (error) {

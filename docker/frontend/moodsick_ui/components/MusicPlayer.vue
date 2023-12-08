@@ -1,17 +1,6 @@
 <template>
   <main class="audioPlayer" id="app">
     <div class="audioPlayerList" :class="{ isActive: isPlaylistActive }">
-      <!-- <div
-        class="item"
-        v-for="(item, index) in musicPlaylist"
-        v-bind:class="{ isActive: isCurrentSong(index) }"
-        v-on:click="changeSong(index), (isPlaylistActive = !isPlaylistActive)"
-        :key="index"
-      >
-        <p class="title">{{ item.title }}</p>
-        <p class="artist">{{ item.artist }}</p>
-      </div> -->
-
       <p class="debugToggle" v-on:click="toggleDebug()">debug: {{ debug }}</p>
     </div>
     <div class="audioPlayerUI" :class="{ isDisabled: isPlaylistActive }">
@@ -25,7 +14,7 @@
         >
           <img
             @load="onImageLoaded()"
-            src="/music_image.jpg"
+            :src="getMusicImage"
             :key="currentSong"
             ondragstart="return false;"
             id="playerAlbumArt"
@@ -103,7 +92,13 @@ export default {
       debug: false,
       musicPlaylist: [],
       audioFile: "",
-      totalSongs: 0
+      totalSongs: 0,
+      bgImages: [
+        "/music_image_1.jpg",
+        "/music_image_2.jpg",
+        "/music_image_3.jpg"
+      ],
+      getMusicImage:  "/music_image_1.jpg"
     };
   },
   created() {
@@ -152,7 +147,12 @@ export default {
     togglePlaylist: function () {
       this.isPlaylistActive = !this.isPlaylistActive;
     },
+    changeBgImage(){
+      this.getMusicImage = this.bgImages[Math.floor(Math.random()*this.bgImages.length)];
+      // document.getElementById("playerAlbumArt").src = this.bgImages[Math.floor(Math.random()*this.bgImages.length)];
+    },
     nextSong: function () {
+      this.changeBgImage()
       if (this.rating == 0) {
         alert("Please select a rating!!!");
         return;

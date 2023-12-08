@@ -14,6 +14,7 @@ from app.db_communcation.users import get_user_playlist_uri, get_user_age, save_
 import json
 from asyncio import gather
 from app.routers import base_categories
+import traceback
 
 router = APIRouter()
 
@@ -54,35 +55,38 @@ async def create_user_playlist(user_id):
 
 @router.post("/spotify-recommendations")
 async def get_spotify_and_user_preferences(request: SpotifyRecommendationInput):
-    user_id = request.user_id
-    user_age = await get_user_age(user_id)
-    moodsick_playlist_uri = None
-    if user_age < 20:
-        moodsick_playlist_uri = SpotifyPlaylist.AGE_10_20.value
-    elif user_age < 30:
-        moodsick_playlist_uri = SpotifyPlaylist.AGE_20_30.value
-    elif user_age < 40:
-        moodsick_playlist_uri = SpotifyPlaylist.AGE_30_40.value
-    elif user_age < 50:
-        moodsick_playlist_uri = SpotifyPlaylist.AGE_40_50.value
-    else:
-        moodsick_playlist_uri = SpotifyPlaylist.AGE_50_60.value
-    
+    try:
+        user_id = request.user_id
+        user_age = await get_user_age(user_id)
+        moodsick_playlist_uri = None
+        if user_age < 20:
+            moodsick_playlist_uri = SpotifyPlaylist.AGE_10_20.value
+        elif user_age < 30:
+            moodsick_playlist_uri = SpotifyPlaylist.AGE_20_30.value
+        elif user_age < 40:
+            moodsick_playlist_uri = SpotifyPlaylist.AGE_30_40.value
+        elif user_age < 50:
+            moodsick_playlist_uri = SpotifyPlaylist.AGE_40_50.value
+        else:
+            moodsick_playlist_uri = SpotifyPlaylist.AGE_50_60.value
+        
 
-    user_playlist_data = await get_user_tracks(user_id)
-    print(user_playlist_data)
-    if len(user_playlist_data) == 0:
-         await get_user_audio_preferance(user_id)
+        user_playlist_data = await get_user_tracks(user_id)
+        # print(user_playlist_data)
+        if len(user_playlist_data) == 0:
+            await get_user_audio_preferance(user_id)
 
-    recommendations_task = get_spotify_recommendations(request)
-    user_preference_task = get_songs_based_on_audio_preferance(user_id, request)
-    
-    results = await gather(recommendations_task, user_preference_task)
-    return {
-        "recommendations": results[0],
-        "data_mined_songs": set(results[1]),
-        "moodsick_playlist_uri": "spotify:playlist:" + moodsick_playlist_uri
-    }
+        recommendations_task = get_spotify_recommendations(request)
+        user_preference_task = get_songs_based_on_audio_preferance(user_id, request)
+        
+        results = await gather(recommendations_task, user_preference_task)
+        return {
+            "recommendations": results[0],
+            "data_mined_songs": set(results[1]),
+            "moodsick_playlist_uri": "spotify:playlist:" + moodsick_playlist_uri
+        }
+    except Exception as e:
+        print(traceback.format_exc())
 
 
 # This function is used to get the spotify recommendations based on the parameters passed by the model
@@ -98,7 +102,7 @@ async def get_spotify_recommendations(request: SpotifyRecommendationInput):
     genres = seed_genres.split(",")
     # print(seed_genres)
     sampled_genres = ",".join([np.random.choice(base_categories[genre]) for genre in genres])
-    print(f"Original genres: {seed_genres}, sampled genres: {sampled_genres}")
+    # print(f"Original genres: {seed_genres}, sampled genres: {sampled_genres}")
     limit = 100
     sort_by_popularity = request.sort_by_popularity
     # The following params are cauing the api to fail: mode, key, time_signature
@@ -332,7 +336,7 @@ async def get_user_audio_preferance(user_id):
         feature_dict = {}
         for each in range(len(playlist_track_dict)):
             feature_dict[playlist_track_dict[each].uri] = await get_audio_features(user_id, playlist_track_dict[each].track_uri)
-        print(feature_dict)
+        # print(feature_dict)
         await save_track_audio_preferances(user_id, list(feature_dict.values()))
 
         
@@ -381,7 +385,7 @@ async def get_songs_based_on_audio_preferance(user_id, request: SpotifyRecommend
                 key in track_info
                 for key in ["danceability", "energy", "loudness", "uri"]
         ):
-            print(track_info)
+            # print(track_info)
             if (
                     request.min_danceability <= track_info["danceability"] <= request.max_danceability
                     and request.min_energy <= track_info["energy"] <= request.max_energy

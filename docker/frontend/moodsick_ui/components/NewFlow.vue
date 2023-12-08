@@ -1,5 +1,5 @@
 <template>
-  <div class="container">
+  <div class="container" v-if="spotify_logged_in">
     <LoadSpinner v-if="showHideSpinner" :user_message="custom_user_message" />
     <div class="row">
       <div class="col-sm-12 text-center">How are you feeling today?</div>
@@ -45,6 +45,102 @@
         ></MusicPlayer>
       </ClientOnly>
     </div>
+    <div v-if="show_spotify_player">
+      <div class="row">
+        <div class="col-sm-6">
+          <h5>Popular Tracks</h5>
+          <div
+            v-for="(_song, index) in model_songs.recommendations.popular_tracks"
+            :key="index"
+          >
+            <iframe
+              style="border-radius: 12px"
+              :src="`https://open.spotify.com/embed/track/${getFormattedTrack(
+                _song
+              )}?utm_source=generator`"
+              width="100%"
+              height="150px"
+              frameBorder="0"
+              allowfullscreen=""
+              allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
+              loading="lazy"
+            ></iframe>
+          </div>
+        </div>
+        <div class="col-sm-6">
+          <h5>Recommended Tracks</h5>
+          <div
+            v-for="(_song, index) in model_songs.recommendations
+              .recommended_songs"
+            :key="index"
+          >
+            <iframe
+              style="border-radius: 12px"
+              :src="`https://open.spotify.com/embed/track/${getFormattedTrack(
+                _song
+              )}?utm_source=generator`"
+              width="100%"
+              height="100%"
+              frameBorder="0"
+              allowfullscreen=""
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+              loading="lazy"
+            ></iframe>
+          </div>
+        </div>
+        <div class="col-sm-6">
+          <h5>A Playlist for you</h5>
+          <div>
+            <iframe
+              style="border-radius: 12px"
+              :src="`https://open.spotify.com/embed/playlist/${getFormattedTrack(
+                model_songs.moodsick_playlist_uri
+              )}?utm_source=generator`"
+              width="100%"
+              height="100%"
+              frameBorder="0"
+              allowfullscreen=""
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+              loading="lazy"
+            ></iframe>
+          </div>
+        </div>
+        <div class="col-sm-6">
+          <div v-if="model_songs.data_mined_songs.length > 0">
+            <h5>Data Mined Songs</h5>
+            <div
+              v-for="(_song, index) in model_songs.data_mined_songs"
+              :key="index"
+            >
+              <iframe
+                style="border-radius: 12px"
+                :src="`https://open.spotify.com/embed/track/${getFormattedTrack(
+                  _song
+                )}?utm_source=generator`"
+                width="100%"
+                height="352"
+                frameBorder="0"
+                allowfullscreen=""
+                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                loading="lazy"
+              ></iframe>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- <div v-show="show_spotify_player"> -->
+    <!-- <div id="embed-iframe"></div> -->
+    <!-- </div> -->
+  </div>
+  <div class="container text-center mt-5" v-else>
+    <h2>
+      We request you to kindly login into Spotify for personalized
+      recommendations
+    </h2>
+    <button class="btn btn-primary" @click="loginToSpotify">
+      Login to Spotify
+    </button>
   </div>
 </template>
 
@@ -59,21 +155,33 @@ export default {
       current_user_rating: [],
       custom_user_message: "",
       mood: null,
+      show_spotify_player: false,
+      model_songs: [],
+      spotify_logged_in: false,
     };
   },
   mounted() {
     this.user_data = JSON.parse(sessionStorage.getItem("user_data"));
+    if (Boolean(this.user_data.spotify_logged_in)) {
+      this.spotify_logged_in = true;
+    }
+    window.onSpotifyIframeApiReady = (IFrameAPI) => {
+      const element = document.getElementById("embed-iframe");
+      const options = {
+        uri: "spotify:episode:7makk4oTQel546B0PZlDM5",
+      };
+      const callback = (EmbedController) => {};
+      IFrameAPI.createController(element, options, callback);
+    };
   },
   methods: {
     async submitMood(mood) {
       this.mood = mood;
       let list = document.getElementsByClassName("mood-selection")[0].children;
       for (let item of list) {
-        console.log(item.id, mood, typeof item.id, mood, item.id == mood);
         if (item.id != mood) {
           item.classList.add("less-op");
         } else {
-          console.log("Elsae");
         }
       }
       let random_songs = [
@@ -99,7 +207,8 @@ export default {
           throw new Error("Failed to Login");
         }
         const responseData = await response.json();
-        if(responseData.length > 0){
+        console.log({ responseData });
+        if (responseData.length > 0) {
           this.show_music_player = true;
           this.songs_list = responseData;
         } else {
@@ -144,14 +253,41 @@ export default {
             throw new Error("Failed to Login");
           }
           const responseData = await response.json();
+          this.model_songs = responseData.data;
+          this.show_spotify_player = true;
+          this.showHideSpinner = false;
           console.log(responseData);
           if (responseData == "Success") {
           } else {
           }
         } catch (error) {
           console.log("error", error);
-          // alert("Some Error Occurred! Pleaser Try Again!");
         }
+      }
+    },
+    getFormattedTrack(_song) {
+      return _song.substr(_song.lastIndexOf(":") + 1, _song.length - 1);
+    },
+    async loginToSpotify() {
+      try {
+        const response = await fetch("http://10.9.0.6/user/user-auth-url", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            user_id: this.user_data.user_id,
+          }),
+        });
+        if (!response.ok) {
+          throw new Error("Failed to Login");
+        }
+        const responseData = await response.json();
+        console.log({ responseData });
+        window.location.href = responseData.url;
+      } catch (error) {
+        console.log(error);
+        alert("Some Error Occurred! Pleaser Try Again!");
       }
     },
   },
@@ -191,5 +327,11 @@ export default {
 }
 .less-op {
   opacity: 0.1;
+}
+</style>
+
+<style>
+.TrackWidget_widgetContainer__gADzr {
+  height: 136px !important;
 }
 </style>
