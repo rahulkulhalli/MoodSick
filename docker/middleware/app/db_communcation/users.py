@@ -86,7 +86,14 @@ async def get_songs_for_user(request_data_dict: dict):
         length = len(user_mood_genres)
         if length == 1:
             #['rock'] then select 5 songs from rock according to the least number of times played
-            songs = collection.songs.find({"genre": user_mood_genres[0]}).sort("number_of_times_played", 1).limit(5)
+            songs = collection.songs.aggregate([
+                {"$match": {"genre": {"$in": user_mood_genres}}},
+                {"$sort": {"number_of_times_played": 1}},
+                {"$group": {"_id": "$genre", "songs": {"$push": "$$ROOT"}}},
+                {"$project": {"songs": {"$slice": ["$songs", 5]}}}, 
+                {"$unwind": "$songs"},
+                {"$limit": 5} 
+            ])
             songs = list(songs)
             for song in songs:
                 song_id = song.get("songs").get("_id")
@@ -97,9 +104,11 @@ async def get_songs_for_user(request_data_dict: dict):
             #['rock', "jazz"] then select 2 songs from each genre according to the least number of times played
             songs = collection.songs.aggregate([
                 {"$match": {"genre": {"$in": user_mood_genres}}},
-                 {"$sort": {"number_of_times_played": 1}}, 
+                {"$sort": {"number_of_times_played": 1}},
                 {"$group": {"_id": "$genre", "songs": {"$push": "$$ROOT"}}},
-                {"$project": {"songs": {"$slice": ["$songs", 2]}}}
+                {"$project": {"songs": {"$slice": ["$songs", 2]}}}, 
+                {"$unwind": "$songs"},
+                {"$limit": 4} 
             ])
             songs = list(songs)
             print(songs)
@@ -121,7 +130,7 @@ async def get_songs_for_user(request_data_dict: dict):
             for song in songs:
                 song_id = song.get("songs").get("_id")
                 collection.songs.update_one({"_id": song_id}, {"$inc": {"number_of_times_played": 1}})
-            return
+            return songs
         elif length == 4:
             songs = collection.songs.aggregate([
                 {"$match": {"genre": {"$in": user_mood_genres}}},
