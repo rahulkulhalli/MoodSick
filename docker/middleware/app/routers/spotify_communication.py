@@ -10,7 +10,7 @@ import numpy as np
 from app.models.spotify_communication import SpotifyPlaylist, SpotifyRecommendationInput, SongFeature
 from app.models.users import UserPlaylistData, UserAudioPreferance
 from app.db_communcation.spotify_communications import save_track_audio_preferances, get_track_audio_preferances
-from app.db_communcation.users import get_user_playlist_uri, get_user_age, save_user_playlist_uri, save_user_audio_preferance, get_user_tracks, edit_songs_data
+from app.db_communcation.users import get_user_playlist_uri, get_user_age, save_user_playlist_uri, save_user_audio_preferance, get_user_tracks, save_user_recommendations_based_on_mood 
 import json
 from asyncio import gather
 from app.routers import base_categories
@@ -53,44 +53,45 @@ async def create_user_playlist(user_id):
     
     return response.json().get("uri")
 
-@router.post("/spotify-recommendations")
-async def get_spotify_and_user_preferences(request: SpotifyRecommendationInput):
-    try:
-        user_id = request.user_id
-        user_age = await get_user_age(user_id)
-        moodsick_playlist_uri = None
-        if user_age < 20:
-            moodsick_playlist_uri = SpotifyPlaylist.AGE_10_20.value
-        elif user_age < 30:
-            moodsick_playlist_uri = SpotifyPlaylist.AGE_20_30.value
-        elif user_age < 40:
-            moodsick_playlist_uri = SpotifyPlaylist.AGE_30_40.value
-        elif user_age < 50:
-            moodsick_playlist_uri = SpotifyPlaylist.AGE_40_50.value
-        else:
-            moodsick_playlist_uri = SpotifyPlaylist.AGE_50_60.value
-        
+async def get_spotify_and_user_preferences(user_mood,request: SpotifyRecommendationInput):
+    user_id = request.user_id
+    user_age = await get_user_age(user_id)
+    moodsick_playlist_uri = None
+    if user_age < 20:
+        moodsick_playlist_uri = SpotifyPlaylist.AGE_10_20.value
+    elif user_age < 30:
+        moodsick_playlist_uri = SpotifyPlaylist.AGE_20_30.value
+    elif user_age < 40:
+        moodsick_playlist_uri = SpotifyPlaylist.AGE_30_40.value
+    elif user_age < 50:
+        moodsick_playlist_uri = SpotifyPlaylist.AGE_40_50.value
+    else:
+        moodsick_playlist_uri = SpotifyPlaylist.AGE_50_60.value
+    
 
-        user_playlist_data = await get_user_tracks(user_id)
-        # print(user_playlist_data)
-        if len(user_playlist_data) == 0:
-            await get_user_audio_preferance(user_id)
+    user_playlist_data = await get_user_tracks(user_id)
+    # print(user_playlist_data)
+    if len(user_playlist_data) == 0:
+         await get_user_audio_preferance(user_id)
 
-        recommendations_task = get_spotify_recommendations(request)
-        user_preference_task = get_songs_based_on_audio_preferance(user_id, request)
-        
-        results = await gather(recommendations_task, user_preference_task)
-        return {
-            "recommendations": results[0],
-            "data_mined_songs": set(results[1]),
-            "moodsick_playlist_uri": "spotify:playlist:" + moodsick_playlist_uri
-        }
-    except Exception as e:
-        print(traceback.format_exc())
+    recommendations_task = get_spotify_recommendations(user_mood, request)
+    user_preference_task = get_songs_based_on_audio_preferance(user_id, request)
+    
+    results = await gather(recommendations_task, user_preference_task)
+    return {
+        "recommendations": results[0],
+        "data_mined_songs": set(results[1]),
+        "moodsick_playlist_uri": "spotify:playlist:" + moodsick_playlist_uri
+    }
+
+# @router.post("/spotify-recommendations")
+# async def test_get_spotify_recommendations(request: SpotifyRecommendationInput):
+#     user_mood = "Happy"
+#     return await get_spotify_and_user_preferences(user_mood, request)
 
 
 # This function is used to get the spotify recommendations based on the parameters passed by the model
-async def get_spotify_recommendations(request: SpotifyRecommendationInput):
+async def get_spotify_recommendations(user_mood, request: SpotifyRecommendationInput):
     user_id = request.user_id
     user_token = await users.get_user_spotify_token(user_id)
     # moodsick_token = await admin.get_moodsick_spotify_token()
@@ -153,7 +154,10 @@ async def get_spotify_recommendations(request: SpotifyRecommendationInput):
         # Choose 5 random tracks
         track_uris = np.random.choice(list(track_uris.keys()), 5, replace=False).tolist()
 
-        
+        analysis_tracks = popular_songs + track_uris
+        analysis_tracks = [uri.split(":")[-1] for uri in analysis_tracks]
+        analysis = await analyze_tracks(user_id, user_mood, analysis_tracks)
+        # print(f"analysis::::::::::::::::::::::::::{analysis}")
         # Check if the user has a playlist
         # If the user has a playlist, save the tracks to the playlist
         # If the user does not have a playlist, create a playlist and save the tracks to the playlist
@@ -173,6 +177,56 @@ async def get_spotify_recommendations(request: SpotifyRecommendationInput):
             "recommended_songs": track_uris,
             "popular_tracks": popular_songs
         }
+
+async def analyze_tracks(user_id, user_mood, track_uris):
+    # print(f"TRACKKK URIIIIIIII::::::::::::::::::::::::::::{len(track_uris)}")
+    user_token = await users.get_user_spotify_token(user_id)
+    endpoint = "https://api.spotify.com/v1/audio-features"
+    headers = {
+        'Authorization': f"Bearer {user_token}"
+    }
+    data = {
+        "ids": ",".join(track_uris)
+    }
+    async with AsyncClient() as client:
+        response = await client.get(endpoint, headers=headers, params=data)
+        # print(f"Response of Get Audio Features: {response.json()}")
+        if response.status_code != 200:
+            raise HTTPException(status_code=response.status_code, detail=response.text)
+        
+        responseJson = response.json()
+        audio_feature_dict = []
+        for each in range(len(responseJson["audio_features"])):
+            if responseJson["audio_features"][each] is not None:
+                # we will save the uri of the track and the audio features of the track to the database
+                audio_feature_dict.append(SongFeature(uri=responseJson["audio_features"][each]["uri"], acousticness=responseJson["audio_features"][each]["acousticness"], danceability=responseJson["audio_features"][each]["danceability"], duration_ms=responseJson["audio_features"][each]["duration_ms"], energy=responseJson["audio_features"][each]["energy"], instrumentalness=responseJson["audio_features"][each]["instrumentalness"], key=responseJson["audio_features"][each]["key"], liveness=responseJson["audio_features"][each]["liveness"], loudness=responseJson["audio_features"][each]["loudness"], mode=responseJson["audio_features"][each]["mode"], speechiness=responseJson["audio_features"][each]["speechiness"], tempo=responseJson["audio_features"][each]["tempo"], time_signature=responseJson["audio_features"][each]["time_signature"], valence=responseJson["audio_features"][each]["valence"]))
+        
+        song_params = {}
+        for each in audio_feature_dict:
+            # print(items.acousticness)
+            song_params["mood_avg_acousticness"] = song_params.get("acousticness", 0) + each.acousticness
+            song_params["mood_avg_danceability"] = song_params.get("danceability", 0) + each.danceability
+            song_params["mood_avg_energy"] = song_params.get("energy", 0) + each.energy
+            song_params["mood_avg_instrumentalness"] = song_params.get("instrumentalness", 0) + each.instrumentalness
+            song_params["mood_avg_key"] = song_params.get("key", 0) + each.key
+            song_params["mood_avg_liveness"] = song_params.get("liveness", 0) + each.liveness
+            song_params["mood_avg_loudness"] = song_params.get("loudness", 0) + each.loudness
+            song_params["mood_avg_mode"] = song_params.get("mode", 0) + each.mode
+            song_params["mood_avg_speechiness"] = song_params.get("speechiness", 0) + each.speechiness
+            song_params["mood_avg_tempo"] = song_params.get("tempo", 0) + each.tempo
+            song_params["mood_avg_time_signature"] = song_params.get("time_signature", 0) + each.time_signature
+            song_params["mood_avg_valence"] = song_params.get("valence", 0) + each.valence
+
+        # print(song_params)
+        # # Get the average of all the audio features
+        song_params = {k: v / len(audio_feature_dict) for k, v in song_params.items()}
+        #Save the audio features to the database
+        # song_params = UserAudioPreferance(**song_params)
+        
+        await save_user_recommendations_based_on_mood(user_id, user_mood, song_params)
+
+        return "Success"
+
 
 async def save_to_user_playlist(user_id, track_uris, user_playlist_link):
     user_token = await users.get_user_spotify_token(user_id)
@@ -228,29 +282,29 @@ async def save_to_moodsick_playlist(age, moodsick_token, track_uris):
         
         return response_moodsick.json()
 
-async def get_track_features(user_token, track_uris):
-    # Split each uri like this user_playlist_uri.split(":")[-1]
-    api_track_uri = ",".join([uri.split(":")[-1] for uri in track_uris])
-    enpoint_url = "https://api.spotify.com/v1/tracks"
-    headers = {
-        'Authorization': f"Bearer {user_token}"
-    }
-    data = {
-        "ids" : api_track_uri
-    }
-    async with AsyncClient() as client:
-        track_features = []
-        response = await client.get(enpoint_url, headers=headers, params=data)
-        print("Inside Get Track Features")
-        if response.status_code != 200:
-            raise HTTPException(status_code=response.status_code, detail=response.text)
+# async def get_track_features(user_token, track_uris):
+#     # Split each uri like this user_playlist_uri.split(":")[-1]
+#     api_track_uri = ",".join([uri.split(":")[-1] for uri in track_uris])
+#     enpoint_url = "https://api.spotify.com/v1/tracks"
+#     headers = {
+#         'Authorization': f"Bearer {user_token}"
+#     }
+#     data = {
+#         "ids" : api_track_uri
+#     }
+#     async with AsyncClient() as client:
+#         track_features = []
+#         response = await client.get(enpoint_url, headers=headers, params=data)
+#         print("Inside Get Track Features")
+#         if response.status_code != 200:
+#             raise HTTPException(status_code=response.status_code, detail=response.text)
         
-        responseJson = response.json()
-        for each in range(len(responseJson["tracks"])):
-        #     print(responseJson["tracks"][each]["artists"][0]["genres"])
-            track_features.append(SongFeature(uri=responseJson["tracks"][each]["uri"], genre=responseJson["tracks"][each]["artists"][0]["genres"], popularity=responseJson["tracks"][each]["popularity"]))
+#         responseJson = response.json()
+#         for each in range(len(responseJson["tracks"])):
+#         #     print(responseJson["tracks"][each]["artists"][0]["genres"])
+#             track_features.append(SongFeature(uri=responseJson["tracks"][each]["uri"], genre=responseJson["tracks"][each]["artists"][0]["genres"], popularity=responseJson["tracks"][each]["popularity"]))
                 
-        return responseJson
+#         return responseJson
 
 async def get_playlist_songs(user_token, playlist_uri):
     endpoint = f"https://api.spotify.com/v1/playlists/{playlist_uri}/tracks"
@@ -274,10 +328,9 @@ async def get_playlist_songs(user_token, playlist_uri):
         return track_uri
 
 # We will user the user's tracks to get the data. We will get the audio features of the tracks and then use the average of the audio features to get the user's audio features
-
 async def get_audio_features(user_id, track_uris):
-    print(user_id)
-    print(track_uris)
+    # print(user_id)
+    # print(track_uris)
     user_token = await users.get_user_spotify_token(user_id)
     endpoint = "https://api.spotify.com/v1/audio-features"
     headers = {
@@ -288,7 +341,7 @@ async def get_audio_features(user_id, track_uris):
     }
     async with AsyncClient() as client:
         response = await client.get(endpoint, headers=headers, params=data)
-        print(f"Response of Get Audio Features: {response.json()}")
+        # print(f"Response of Get Audio Features: {response.json()}")
         if response.status_code != 200:
             raise HTTPException(status_code=response.status_code, detail=response.text)
         
@@ -303,8 +356,8 @@ async def get_audio_features(user_id, track_uris):
 
 # @router.post("/test_save_feature")
 async def get_user_audio_preferance(user_id):
-    print("Inside get_user_audio_preferance")
-    print(user_id)
+    # print("Inside get_user_audio_preferance")
+    # print(user_id)
     # Using user token. So we don't have to worry about api rate limit
     user_token = await users.get_user_spotify_token(user_id)
     enpoint_url = "https://api.spotify.com/v1/me/playlists"
@@ -312,7 +365,7 @@ async def get_user_audio_preferance(user_id):
         'Authorization': f"Bearer {user_token}"
     }
     data = {
-        "limit": 20, # hard limit of 20 playlists. Spotify allows upto 50 playlists.
+        "limit": 50, #Spotify allows upto 50 playlists.
         "offset": 0
     }
     async with AsyncClient() as client:
@@ -371,8 +424,13 @@ async def get_songs_based_on_audio_preferance(user_id, request: SpotifyRecommend
 
     # user_token = await users.get_user_spotify_token()
     user_track_audio_features = await get_track_audio_preferances(user_id)
-    # print(f"Inside get songs based on audio preferance{user_track_audio_features}")
     track_uris = []
+    count = 0
+    min_multiplier = 1.0
+    max_multiplier = 1.0
+    increment = 0.05
+    found = False
+    #
     # Get the track uris based on the audio features The dict is in the format  [{'uri':
     # 'spotify:track:1qIAqSCPcRkkNU8dj5pIOC', 'acousticness': 0.00548, 'danceability': 0.459, 'duration_ms':
     # 231013.0, 'energy': 0.629, 'instrumentalness': 0.0, 'key': 10, 'liveness': 0.35, 'loudness': -5.492, 'mode': 1,
@@ -380,21 +438,56 @@ async def get_songs_based_on_audio_preferance(user_id, request: SpotifyRecommend
     # {'uri': 'spotify:track:5ve0BYRZZ2aoHFqZMxqYgt', 'acousticness': 0.0083, 'danceability': 0.607, 'duration_ms':
     # 232467.0, 'energy': 0.619, 'instrumentalness': 0.0, 'key': 1, 'liveness': 0.366, 'loudness': -5.761, 'mode': 0,
     # 'speechiness': 0.038, 'tempo': 79.998, 'time_signature': 4, 'valence': 0.5}]
-    for track_info in user_track_audio_features:
-        if all(
+    
+    while not found and min_multiplier >= 0.1 and max_multiplier <= 1.9:
+        # print(min_multiplier, max_multiplier)
+        for track_info in user_track_audio_features: 
+            if all(
                 key in track_info
-                for key in ["danceability", "energy", "loudness", "uri"]
-        ):
-            # print(track_info)
-            if (
-                    request.min_danceability <= track_info["danceability"] <= request.max_danceability
-                    and request.min_energy <= track_info["energy"] <= request.max_energy
-                    and request.min_loudness <= track_info["loudness"] <= request.max_loudness
+                for key in ["danceability", "energy", "loudness", "uri", "acousticness",
+                            "instrumentalness", "liveness", "speechiness", "tempo", "valence"]
+
             ):
-                track_uris.append(track_info["uri"])
-        else:
-            # Handle the case where one or more keys are missing in the dictionary
-            # You can log a warning or handle it as per your application logic
-            pass
+                hits = 0
+                hits_dict = []
+                if min_multiplier * request.min_danceability <= track_info["danceability"] <= request.max_danceability * max_multiplier:
+                    hits += 1
+                    hits_dict.append("danceability")
+                if min_multiplier * request.min_energy <= track_info["energy"] <= request.max_energy * max_multiplier:
+                    hits += 1
+                    hits_dict.append("energy")
+                if min_multiplier * request.min_loudness <= track_info["loudness"] <= request.max_loudness * max_multiplier:
+                    hits += 1
+                    hits_dict.append("loudness")
+                if min_multiplier * request.min_speechiness <= track_info["speechiness"] <= request.max_speechiness * max_multiplier:
+                    hits += 1
+                    hits_dict.append("speechiness")
+                if min_multiplier * request.min_acousticness <= track_info["acousticness"] <= request.max_acousticness * max_multiplier:
+                    hits += 1
+                    hits_dict.append("acousticness")
+                if min_multiplier * request.min_instrumentalness <= track_info["instrumentalness"] <= request.max_instrumentalness * max_multiplier:
+                    hits += 1
+                    hits_dict.append("instrumentalness")
+                if min_multiplier * request.min_liveness <= track_info["liveness"] <= request.max_liveness * max_multiplier:
+                    hits += 1
+                    hits_dict.append("liveness")
+                if min_multiplier * request.min_valence <= track_info["valence"] <= request.max_valence * max_multiplier:
+                    hits += 1
+                    hits_dict.append("valence")
+                if min_multiplier * request.min_tempo <= track_info["tempo"] <= request.max_tempo * max_multiplier:
+                    hits += 1
+                    hits_dict.append("tempo")
+                print(f"Hits:::::::::::::::::::::::::::::::::::{hits}")
+                len_dict = len(hits_dict)
+                if hits >= 6 and len_dict >= 6:
+                    track_uris.append(track_info["uri"])
+                    count += 1
+                    if count >= 5:
+                        found = True
+                        break
+
+            if not found:
+                min_multiplier -= increment
+                max_multiplier += increment
 
     return track_uris

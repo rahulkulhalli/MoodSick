@@ -118,7 +118,7 @@ celerybeat.pid
 
 # SageMath parsed files
 *.sage.py
-# mongo/
+mongo/*
 # Environments
 .env
 .venv
@@ -193,4 +193,8 @@ logs
 .env
 .env.*
 !.env.example
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
 docker/mongo/
