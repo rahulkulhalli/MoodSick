@@ -83,6 +83,7 @@ async def get_songs_for_user(request_data_dict: dict):
     user_id = request_data_dict.get("user_id")
     try:
         user_mood_genres = await get_user_mood_genres(user_id, mood)
+        print("user_mood_genres", user_mood_genres)
         mood_genre = []
         # print(user_mood_genres)
         for genre in user_mood_genres:
