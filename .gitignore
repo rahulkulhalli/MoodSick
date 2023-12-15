@@ -191,3 +191,5 @@ logs
 .env.*
 !.env.example
 docker/mongo/
+docker/.DS_Store
+.DS_Store
